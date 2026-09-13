@@ -4,11 +4,7 @@ import os
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-
-app.secret_key = os.environ.get(
-    "SECRET_KEY",
-    "dev-secret-change-me"
-)
+app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-me")
 
 DB = "users.db"
 
@@ -21,9 +17,16 @@ def init_db():
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL
+            password TEXT NOT NULL,
+            avatar TEXT DEFAULT '👤'
         )
     """)
+
+    # Dodanie kolumny avatar do starej bazy
+    try:
+        c.execute("ALTER TABLE users ADD COLUMN avatar TEXT DEFAULT '👤'")
+    except sqlite3.OperationalError:
+        pass
 
     conn.commit()
     conn.close()
@@ -67,36 +70,30 @@ def login():
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>FilipHub — Logowanie</title>
 
 <style>
-
-* {
-    box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
     margin: 0;
     min-height: 100vh;
     font-family: Arial, sans-serif;
-    background:
-        radial-gradient(circle at top, #1e293b 0%, #0f172a 40%, #020617 100%);
+    background: radial-gradient(circle at top, #1e293b, #020617);
     color: white;
     display: flex;
     justify-content: center;
     align-items: center;
 }
 
-.login-box {
+.box {
     width: 380px;
     max-width: 92%;
     padding: 35px;
-    background: rgba(15, 23, 42, 0.88);
-    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(15,23,42,.9);
+    border: 1px solid rgba(255,255,255,.08);
     border-radius: 22px;
     box-shadow: 0 25px 80px rgba(0,0,0,.45);
-    backdrop-filter: blur(15px);
 }
 
 .logo {
@@ -133,16 +130,10 @@ button {
     padding: 14px;
     border: none;
     border-radius: 12px;
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    background: linear-gradient(135deg,#6366f1,#8b5cf6);
     color: white;
     font-weight: bold;
     cursor: pointer;
-    transition: .2s;
-}
-
-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 30px rgba(99,102,241,.3);
 }
 
 .message {
@@ -151,9 +142,9 @@ button:hover {
     margin-top: 15px;
 }
 
-.register {
+.bottom {
     text-align: center;
-    margin-top: 22px;
+    margin-top: 20px;
     color: #94a3b8;
 }
 
@@ -161,49 +152,46 @@ a {
     color: #818cf8;
     text-decoration: none;
 }
-
 </style>
 </head>
 
 <body>
 
-<div class="login-box">
+<div class="box">
 
-    <div class="logo">
-        <h1>🔥 FilipHub</h1>
-        <p>Witaj ponownie</p>
-    </div>
+<div class="logo">
+    <h1>🔥 FilipHub</h1>
+    <p>Witaj ponownie</p>
+</div>
 
-    <form method="POST">
+<form method="POST">
 
-        <input
-            type="text"
-            name="username"
-            placeholder="Nazwa użytkownika"
-            required
-        >
+<input
+    type="text"
+    name="username"
+    placeholder="Nazwa użytkownika"
+    required
+>
 
-        <input
-            type="password"
-            name="password"
-            placeholder="Hasło"
-            required
-        >
+<input
+    type="password"
+    name="password"
+    placeholder="Hasło"
+    required
+>
 
-        <button type="submit">
-            Zaloguj się
-        </button>
+<button type="submit">Zaloguj się</button>
 
-    </form>
+</form>
 
-    {% if message %}
-        <div class="message">{{ message }}</div>
-    {% endif %}
+{% if message %}
+<div class="message">{{ message }}</div>
+{% endif %}
 
-    <div class="register">
-        Nie masz konta?
-        <a href="/register">Utwórz konto</a>
-    </div>
+<div class="bottom">
+    Nie masz konta?
+    <a href="/register">Utwórz konto</a>
+</div>
 
 </div>
 
@@ -213,16 +201,14 @@ a {
 
 
 # =========================
-# REGISTER
+# REJESTRACJA
 # =========================
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
-
     message = ""
 
     if request.method == "POST":
-
         username = request.form["username"].strip()
         password = request.form["password"]
 
@@ -233,20 +219,15 @@ def register():
             message = "Hasło musi mieć minimum 6 znaków."
 
         else:
-
             conn = sqlite3.connect(DB)
             c = conn.cursor()
 
             try:
-
                 hashed_password = generate_password_hash(password)
 
                 c.execute(
-                    """
-                    INSERT INTO users (username, password)
-                    VALUES (?, ?)
-                    """,
-                    (username, hashed_password)
+                    "INSERT INTO users (username, password, avatar) VALUES (?, ?, ?)",
+                    (username, hashed_password, "👤")
                 )
 
                 conn.commit()
@@ -255,34 +236,26 @@ def register():
                 return redirect("/")
 
             except sqlite3.IntegrityError:
-
                 conn.close()
-
                 message = "Taki użytkownik już istnieje."
 
     return render_template_string("""
 <!DOCTYPE html>
 <html lang="pl">
-
 <head>
-
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>FilipHub — Rejestracja</title>
 
 <style>
-
-* {
-    box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
     margin: 0;
     min-height: 100vh;
     font-family: Arial, sans-serif;
-    background:
-        radial-gradient(circle at top, #1e293b, #020617);
+    background: radial-gradient(circle at top,#1e293b,#020617);
     color: white;
     display: flex;
     justify-content: center;
@@ -338,7 +311,6 @@ button {
 a {
     color: #818cf8;
 }
-
 </style>
 
 </head>
@@ -350,7 +322,7 @@ a {
 <h1>🔥 FilipHub</h1>
 
 <p style="text-align:center;color:#94a3b8;">
-    Utwórz swoje konto
+Utwórz swoje konto
 </p>
 
 <form method="POST">
@@ -369,9 +341,7 @@ a {
     required
 >
 
-<button type="submit">
-    Utwórz konto
-</button>
+<button type="submit">Utwórz konto</button>
 
 </form>
 
@@ -380,8 +350,8 @@ a {
 {% endif %}
 
 <div class="bottom">
-    Masz już konto?
-    <a href="/">Zaloguj się</a>
+Masz już konto?
+<a href="/">Zaloguj się</a>
 </div>
 
 </div>
@@ -402,6 +372,19 @@ def panel():
         return redirect("/")
 
     username = session["username"]
+
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+
+    c.execute(
+        "SELECT avatar FROM users WHERE username = ?",
+        (username,)
+    )
+
+    result = c.fetchone()
+    conn.close()
+
+    avatar = result[0] if result and result[0] else "👤"
 
     return render_template_string("""
 <!DOCTYPE html>
@@ -507,17 +490,23 @@ body {
 }
 
 .user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     background: #0f172a;
     border: 1px solid #1e293b;
-    padding: 10px 15px;
+    padding: 8px 14px;
     border-radius: 12px;
+}
+
+.avatar-small {
+    font-size: 25px;
 }
 
 .hero {
     padding: 35px;
     border-radius: 20px;
-    background:
-        linear-gradient(135deg, #1e1b4b, #312e81);
+    background: linear-gradient(135deg,#1e1b4b,#312e81);
     border: 1px solid #4338ca;
     margin-bottom: 25px;
 }
@@ -533,7 +522,7 @@ body {
 
 .grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3,1fr);
     gap: 20px;
 }
 
@@ -591,7 +580,7 @@ body {
     background: #334155;
 }
 
-@media (max-width: 850px) {
+@media (max-width:850px) {
 
     .sidebar {
         position: relative;
@@ -627,7 +616,7 @@ body {
     }
 
     .user {
-        display: inline-block;
+        display: inline-flex;
         margin-top: 15px;
     }
 }
@@ -640,156 +629,151 @@ body {
 
 <aside class="sidebar">
 
-    <div class="logo">
-        🔥 FilipHub
-    </div>
+<div class="logo">
+🔥 FilipHub
+</div>
 
-    <div class="menu-title">
-        Menu
-    </div>
+<div class="menu-title">
+Menu
+</div>
 
-    <div class="menu">
+<div class="menu">
 
-        <a href="/panel" class="active">
-            🏠 Dashboard
-        </a>
+<a href="/panel" class="active">
+🏠 Dashboard
+</a>
 
-        <a href="/profile">
-            👤 Profil
-        </a>
+<a href="/profile">
+👤 Profil
+</a>
 
-        <a href="/change-password">
-            🔐 Zmień hasło
-        </a>
+<a href="/edit-profile">
+✏️ Edytuj profil
+</a>
 
-    </div>
+<a href="/change-password">
+🔐 Zmień hasło
+</a>
 
-    <div class="logout">
+</div>
 
-        <a href="/logout">
-            🚪 Wyloguj się
-        </a>
-
-    </div>
+<div class="logout">
+<a href="/logout">
+🚪 Wyloguj się
+</a>
+</div>
 
 </aside>
 
 
 <main class="main">
 
-    <div class="topbar">
+<div class="topbar">
 
-        <div>
-            <h1>Dashboard</h1>
-            <p style="color:#64748b;">
-                Centrum Twojego konta
-            </p>
-        </div>
+<div>
+<h1>Dashboard</h1>
+<p style="color:#64748b;">
+Centrum Twojego konta
+</p>
+</div>
 
-        <div class="user">
-            👤 {{ username }}
-        </div>
+<div class="user">
+<span class="avatar-small">{{ avatar }}</span>
+{{ username }}
+</div>
 
-    </div>
-
-
-    <section class="hero">
-
-        <h2>
-            Witaj, {{ username }}! 👋
-        </h2>
-
-        <p>
-            Miło Cię widzieć w FilipHub.
-            To jest Twoje centrum użytkownika.
-        </p>
-
-    </section>
+</div>
 
 
-    <div class="grid">
+<section class="hero">
 
-        <div class="card">
+<h2>
+Witaj, {{ username }}! 👋
+</h2>
 
-            <div class="card-icon">
-                🚀
-            </div>
+<p>
+Miło Cię widzieć w FilipHub.
+To jest Twoje centrum użytkownika.
+</p>
 
-            <h3>
-                Nowe funkcje
-            </h3>
-
-            <p>
-                FilipHub będzie stopniowo otrzymywał
-                nowe możliwości.
-            </p>
-
-        </div>
+</section>
 
 
-        <div class="card">
+<div class="grid">
 
-            <div class="card-icon">
-                🔐
-            </div>
+<div class="card">
 
-            <h3>
-                Bezpieczeństwo
-            </h3>
+<div class="card-icon">
+🚀
+</div>
 
-            <p>
-                Twoje hasło jest przechowywane
-                w bezpiecznej, zahashowanej formie.
-            </p>
+<h3>Nowe funkcje</h3>
 
-        </div>
+<p>
+FilipHub będzie stopniowo otrzymywał
+nowe możliwości.
+</p>
 
-
-        <div class="card">
-
-            <div class="card-icon">
-                ⚡
-            </div>
-
-            <h3>
-                Szybki dostęp
-            </h3>
-
-            <p>
-                Wszystkie najważniejsze opcje
-                znajdziesz w menu po lewej.
-            </p>
-
-        </div>
-
-    </div>
+</div>
 
 
-    <section class="quick">
+<div class="card">
 
-        <h2>
-            Szybkie akcje
-        </h2>
+<div class="card-icon">
+👤
+</div>
 
-        <a href="/profile">
-            👤 Otwórz profil
-        </a>
+<h3>Twój profil</h3>
 
-        <a href="/change-password">
-            🔐 Zmień hasło
-        </a>
+<p>
+Możesz ustawić własny avatar
+i zmienić nazwę użytkownika.
+</p>
 
-        <a href="/logout">
-            🚪 Wyloguj
-        </a>
+</div>
 
-    </section>
+
+<div class="card">
+
+<div class="card-icon">
+🔐
+</div>
+
+<h3>Bezpieczeństwo</h3>
+
+<p>
+Możesz w każdej chwili zmienić
+swoje hasło.
+</p>
+
+</div>
+
+</div>
+
+
+<section class="quick">
+
+<h2>Szybkie akcje</h2>
+
+<a href="/profile">
+👤 Profil
+</a>
+
+<a href="/edit-profile">
+✏️ Edytuj profil
+</a>
+
+<a href="/change-password">
+🔐 Zmień hasło
+</a>
+
+</section>
 
 </main>
 
 </body>
 </html>
-""", username=username)
+""", username=username, avatar=avatar)
 
 
 # =========================
@@ -803,6 +787,19 @@ def profile():
         return redirect("/")
 
     username = session["username"]
+
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+
+    c.execute(
+        "SELECT avatar FROM users WHERE username = ?",
+        (username,)
+    )
+
+    result = c.fetchone()
+    conn.close()
+
+    avatar = result[0] if result and result[0] else "👤"
 
     return render_template_string("""
 <!DOCTYPE html>
@@ -819,54 +816,65 @@ def profile():
 
 body {
     margin: 0;
+    min-height: 100vh;
     font-family: Arial, sans-serif;
     background: #020617;
     color: white;
-}
-
-.container {
-    max-width: 700px;
-    margin: 70px auto;
-    padding: 25px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .box {
+    width: 420px;
+    max-width: 92%;
     background: #0f172a;
     border: 1px solid #1e293b;
-    border-radius: 20px;
-    padding: 35px;
+    border-radius: 22px;
+    padding: 40px;
     text-align: center;
 }
 
 .avatar {
-    width: 90px;
-    height: 90px;
+    width: 110px;
+    height: 110px;
     margin: auto;
     border-radius: 50%;
     background: linear-gradient(135deg,#6366f1,#8b5cf6);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 40px;
+    font-size: 55px;
+    box-shadow: 0 15px 40px rgba(99,102,241,.25);
 }
 
 .username {
-    font-size: 28px;
-    margin: 20px 0 5px;
+    font-size: 30px;
+    font-weight: bold;
+    margin-top: 20px;
 }
 
 .info {
     color: #94a3b8;
+    margin-top: 8px;
+}
+
+.buttons {
+    margin-top: 30px;
 }
 
 a {
-    display: inline-block;
-    margin-top: 25px;
-    color: white;
+    display: block;
+    margin-top: 10px;
+    padding: 13px;
+    border-radius: 11px;
     background: #1e293b;
-    padding: 12px 20px;
-    border-radius: 10px;
+    color: white;
     text-decoration: none;
+}
+
+a:hover {
+    background: #334155;
 }
 
 </style>
@@ -874,25 +882,29 @@ a {
 </head>
 
 <body>
-
-<div class="container">
 
 <div class="box">
 
 <div class="avatar">
-    👤
+{{ avatar }}
 </div>
 
 <div class="username">
-    {{ username }}
+{{ username }}
 </div>
 
 <div class="info">
-    Użytkownik FilipHub
+Użytkownik FilipHub
 </div>
 
+<div class="buttons">
+
+<a href="/edit-profile">
+✏️ Edytuj profil
+</a>
+
 <a href="/panel">
-    ← Wróć do dashboardu
+🏠 Wróć do dashboardu
 </a>
 
 </div>
@@ -901,151 +913,75 @@ a {
 
 </body>
 </html>
-""", username=username)
+""", username=username, avatar=avatar)
 
 
 # =========================
-# ZMIANA HASŁA
+# EDYCJA PROFILU
 # =========================
 
-@app.route("/change-password", methods=["GET", "POST"])
-def change_password():
+@app.route("/edit-profile", methods=["GET", "POST"])
+def edit_profile():
 
     if "username" not in session:
         return redirect("/")
 
+    old_username = session["username"]
     message = ""
+
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+
+    c.execute(
+        "SELECT avatar FROM users WHERE username = ?",
+        (old_username,)
+    )
+
+    result = c.fetchone()
+
+    current_avatar = result[0] if result and result[0] else "👤"
+
+    conn.close()
 
     if request.method == "POST":
 
-        current_password = request.form["current_password"]
-        new_password = request.form["new_password"]
-        confirm_password = request.form["confirm_password"]
+        new_username = request.form["username"].strip()
+        new_avatar = request.form["avatar"].strip()
 
-        username = session["username"]
+        if len(new_username) < 3:
+            message = "Nazwa użytkownika musi mieć minimum 3 znaki."
 
-        conn = sqlite3.connect(DB)
-        c = conn.cursor()
-
-        c.execute(
-            "SELECT * FROM users WHERE username = ?",
-            (username,)
-        )
-
-        user = c.fetchone()
-
-        if not user:
-
-            conn.close()
-            return redirect("/")
-
-        if not check_password_hash(user[2], current_password):
-
-            message = "Obecne hasło jest nieprawidłowe."
-
-        elif len(new_password) < 6:
-
-            message = "Nowe hasło musi mieć minimum 6 znaków."
-
-        elif new_password != confirm_password:
-
-            message = "Nowe hasła nie są takie same."
-
-        elif check_password_hash(user[2], new_password):
-
-            message = "Nowe hasło musi być inne od obecnego."
+        elif not new_avatar:
+            message = "Wybierz avatar."
 
         else:
 
-            hashed_password = generate_password_hash(new_password)
+            conn = sqlite3.connect(DB)
+            c = conn.cursor()
 
-            c.execute(
-                """
-                UPDATE users
-                SET password = ?
-                WHERE username = ?
-                """,
-                (hashed_password, username)
-            )
+            try:
 
-            conn.commit()
-            conn.close()
+                c.execute(
+                    """
+                    UPDATE users
+                    SET username = ?, avatar = ?
+                    WHERE username = ?
+                    """,
+                    (new_username, new_avatar, old_username)
+                )
 
-            return render_template_string("""
-<!DOCTYPE html>
-<html lang="pl">
+                conn.commit()
+                conn.close()
 
-<head>
+                session["username"] = new_username
 
-<meta charset="UTF-8">
+                return redirect("/profile")
 
-<title>Hasło zmienione</title>
+            except sqlite3.IntegrityError:
 
-<style>
+                conn.close()
 
-body {
-    margin: 0;
-    min-height: 100vh;
-    font-family: Arial, sans-serif;
-    background: #020617;
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.box {
-    background: #0f172a;
-    border: 1px solid #1e293b;
-    padding: 40px;
-    border-radius: 20px;
-    text-align: center;
-}
-
-.success {
-    font-size: 50px;
-}
-
-a {
-    display: inline-block;
-    margin-top: 20px;
-    background: #1e293b;
-    padding: 12px 20px;
-    border-radius: 10px;
-    color: white;
-    text-decoration: none;
-}
-
-</style>
-
-</head>
-
-<body>
-
-<div class="box">
-
-<div class="success">
-    ✅
-</div>
-
-<h1>Hasło zmienione</h1>
-
-<p style="color:#94a3b8;">
-    Twoje hasło zostało pomyślnie zmienione.
-</p>
-
-<a href="/panel">
-    Wróć do dashboardu
-</a>
-
-</div>
-
-</body>
-
-</html>
-""")
-
-        conn.close()
+                message = "Taka nazwa użytkownika już istnieje."
 
     return render_template_string("""
 <!DOCTYPE html>
@@ -1056,7 +992,7 @@ a {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>FilipHub — Zmień hasło</title>
+<title>FilipHub — Edycja profilu</title>
 
 <style>
 
@@ -1072,11 +1008,11 @@ body {
 }
 
 .box {
-    width: 400px;
+    width: 430px;
     max-width: 92%;
     background: #0f172a;
     border: 1px solid #1e293b;
-    border-radius: 20px;
+    border-radius: 22px;
     padding: 35px;
 }
 
@@ -1084,15 +1020,54 @@ h1 {
     margin-top: 0;
 }
 
+label {
+    display: block;
+    margin-bottom: 8px;
+    color: #cbd5e1;
+}
+
 input {
     width: 100%;
     padding: 14px;
-    margin-bottom: 14px;
+    margin-bottom: 20px;
     border-radius: 12px;
     border: 1px solid #334155;
     background: #020617;
     color: white;
     box-sizing: border-box;
+}
+
+.avatar-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.avatar-options label {
+    cursor: pointer;
+    margin: 0;
+}
+
+.avatar-options input {
+    display: none;
+}
+
+.avatar-choice {
+    width: 52px;
+    height: 52px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #1e293b;
+    border: 2px solid transparent;
+    border-radius: 12px;
+    font-size: 27px;
+}
+
+.avatar-options input:checked + .avatar-choice {
+    border-color: #6366f1;
+    background: #312e81;
 }
 
 button {
@@ -1109,7 +1084,7 @@ button {
 .message {
     color: #f87171;
     text-align: center;
-    margin-top: 15px;
+    margin-bottom: 15px;
 }
 
 .back {
@@ -1129,80 +1104,134 @@ a {
 
 <div class="box">
 
-<h1>🔐 Zmień hasło</h1>
+<h1>✏️ Edytuj profil</h1>
 
-<p style="color:#94a3b8;">
-    Zabezpiecz swoje konto nowym hasłem.
-</p>
+{% if message %}
+<div class="message">
+{{ message }}
+</div>
+{% endif %}
 
 <form method="POST">
 
+<label>Nazwa użytkownika</label>
+
 <input
-    type="password"
-    name="current_password"
-    placeholder="Obecne hasło"
+    type="text"
+    name="username"
+    value="{{ old_username }}"
+    minlength="3"
     required
 >
 
-<input
-    type="password"
-    name="new_password"
-    placeholder="Nowe hasło"
-    required
->
 
-<input
-    type="password"
-    name="confirm_password"
-    placeholder="Powtórz nowe hasło"
-    required
->
+<label>Wybierz avatar</label>
+
+<div class="avatar-options">
+
+<label>
+<input type="radio" name="avatar" value="👤"
+{% if current_avatar == "👤" %}checked{% endif %}>
+<span class="avatar-choice">👤</span>
+</label>
+
+<label>
+<input type="radio" name="avatar" value="😎"
+{% if current_avatar == "😎" %}checked{% endif %}>
+<span class="avatar-choice">😎</span>
+</label>
+
+<label>
+<input type="radio" name="avatar" value="🔥"
+{% if current_avatar == "🔥" %}checked{% endif %}>
+<span class="avatar-choice">🔥</span>
+</label>
+
+<label>
+<input type="radio" name="avatar" value="😈"
+{% if current_avatar == "😈" %}checked{% endif %}>
+<span class="avatar-choice">😈</span>
+</label>
+
+<label>
+<input type="radio" name="avatar" value="🤖"
+{% if current_avatar == "🤖" %}checked{% endif %}>
+<span class="avatar-choice">🤖</span>
+</label>
+
+<label>
+<input type="radio" name="avatar" value="👑"
+{% if current_avatar == "👑" %}checked{% endif %}>
+<span class="avatar-choice">👑</span>
+</label>
+
+<label>
+<input type="radio" name="avatar" value="💀"
+{% if current_avatar == "💀" %}checked{% endif %}>
+<span class="avatar-choice">💀</span>
+</label>
+
+<label>
+<input type="radio" name="avatar" value="🚀"
+{% if current_avatar == "🚀" %}checked{% endif %}>
+<span class="avatar-choice">🚀</span>
+</label>
+
+</div>
 
 <button type="submit">
-    Zmień hasło
+Zapisz zmiany
 </button>
 
 </form>
 
-{% if message %}
-<div class="message">
-    {{ message }}
-</div>
-{% endif %}
-
 <div class="back">
-    <a href="/panel">
-        ← Wróć do dashboardu
-    </a>
+<a href="/profile">
+← Wróć do profilu
+</a>
 </div>
 
 </div>
 
 </body>
-
 </html>
-""", message=message)
-
-
-# =========================
-# WYLOGOWANIE
-# =========================
-
-@app.route("/logout")
-def logout():
-
-    session.clear()
-
-    return redirect("/")
-
-
-# =========================
-# START
-# =========================
-
-if __name__ == "__main__":
-
-    app.run(
-        host="0.0.0.0",
-        port=8080
+""",
+        old_username=old_username,
+        current_avatar=current_avatar,
+        message=message
     )
+
+
+# =========================
+# ZMIANA HASŁA
+# =========================
+
+@app.route("/change-password", methods=["GET", "POST"])
+def change_password():
+
+    if "username" not in session:
+        return redirect("/")
+
+    message = ""
+    username = session["username"]
+
+    if request.method == "POST":
+
+        current_password = request.form["current_password"]
+        new_password = request.form["new_password"]
+        confirm_password = request.form["confirm_password"]
+
+        conn = sqlite3.connect(DB)
+        c = conn.cursor()
+
+        c.execute(
+            "SELECT * FROM users WHERE username = ?",
+            (username,)
+        )
+
+        user = c.fetchone()
+
+        if not user:
+
+            conn.close()
+            return re
