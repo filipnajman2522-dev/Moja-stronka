@@ -289,6 +289,18 @@ nav a {{
     font-size: 32px;
 }}
 
+.future {{
+    margin-top: 25px;
+    padding: 22px;
+    background: #181818;
+    border: 1px solid #222;
+    border-radius: 15px;
+}}
+
+.future h2 {{
+    color: #00ff88;
+}}
+
 .cards {{
     display: grid;
     grid-template-columns:
@@ -362,15 +374,30 @@ nav a {{
 <div class="hero">
 
 <h1>
-Witaj, {username}! 👋
+🔥 Witaj, {username}!
 </h1>
 
 <p>
-To jest strona główna Twojego panelu użytkownika.
+Jesteś zalogowany.
 </p>
 
+
+<div class="future">
+
+<h2>
+🚀 Coś nowego już wkrótce!
+</h2>
+
+<p>
+W przyszłości pojawią się tutaj nowe funkcje,
+ulepszenia profilu i więcej możliwości.
+</p>
+
+</div>
+
+
 <a class="button" href="/profile">
-Zobacz profil
+👤 Zobacz profil
 </a>
 
 </div>
@@ -408,7 +435,7 @@ Twoja sesja jest aktywna.
 <h2>🌐 FilipHub</h2>
 
 <p>
-Witaj w swoim panelu!
+Twoje centrum użytkownika.
 </p>
 
 </div>
