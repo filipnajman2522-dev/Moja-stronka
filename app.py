@@ -6,29 +6,27 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-
-app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-me")
+app.secret_key = os.environ.get("SECRET_KEY", "filiphub-dev-secret")
 
 DB = "users.db"
-
 UPLOAD_FOLDER = "static/uploads"
-ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
+ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
 
 
+def get_db():
+    return sqlite3.connect(DB)
+
+
 def allowed_file(filename):
-    return (
-        "." in filename
-        and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
-    )
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
 def init_db():
-    conn = sqlite3.connect(DB)
+    conn = get_db()
     c = conn.cursor()
 
     c.execute("""
@@ -52,9 +50,434 @@ def init_db():
 init_db()
 
 
-# =========================
-# LOGIN
-# =========================
+CSS = """
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#020617;color:#fff}
+a{text-decoration:none;color:inherit}
+
+.sidebar{
+    position:fixed;
+    left:0;
+    top:0;
+    width:240px;
+    height:100vh;
+    background:#0f172a;
+    border-right:1px solid #1e293b;
+    padding:25px 15px
+}
+
+.logo{
+    font-size:25px;
+    font-weight:700;
+    padding:10px;
+    margin-bottom:35px
+}
+
+.menu-title{
+    color:#64748b;
+    font-size:12px;
+    text-transform:uppercase;
+    padding:0 12px;
+    margin-bottom:10px
+}
+
+.menu a{
+    display:block;
+    padding:13px 15px;
+    margin-bottom:7px;
+    border-radius:10px;
+    color:#cbd5e1
+}
+
+.menu a:hover{
+    background:#1e293b;
+    color:#fff
+}
+
+.logout{
+    position:absolute;
+    bottom:25px;
+    left:15px;
+    right:15px
+}
+
+.logout a{
+    display:block;
+    padding:13px;
+    border-radius:10px;
+    color:#f87171
+}
+
+.main{
+    margin-left:240px;
+    padding:35px;
+    min-height:100vh
+}
+
+.topbar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:30px
+}
+
+.topbar h1{margin:0}
+
+.user{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    background:#0f172a;
+    border:1px solid #1e293b;
+    padding:8px 14px;
+    border-radius:12px
+}
+
+.avatar-small{
+    width:40px;
+    height:40px;
+    border-radius:50%;
+    object-fit:cover;
+    background:#1e293b
+}
+
+.hero{
+    padding:35px;
+    border-radius:20px;
+    background:linear-gradient(135deg,#1e1b4b,#312e81);
+    border:1px solid #4338ca;
+    margin-bottom:25px
+}
+
+.hero h2{
+    font-size:30px;
+    margin:0 0 10px
+}
+
+.hero p,.muted{
+    color:#94a3b8
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:20px
+}
+
+.card,.quick,.form-box,.profile-card{
+    background:#0f172a;
+    border:1px solid #1e293b;
+    border-radius:18px
+}
+
+.card{
+    padding:25px
+}
+
+.card:hover{
+    border-color:#475569;
+    transform:translateY(-3px)
+}
+
+.card-icon{
+    font-size:28px;
+    margin-bottom:15px
+}
+
+.card h3{
+    margin:0 0 8px
+}
+
+.card p{
+    color:#94a3b8;
+    line-height:1.5
+}
+
+.quick{
+    margin-top:25px;
+    padding:25px
+}
+
+.quick a,.btn{
+    display:inline-block;
+    padding:12px 18px;
+    margin:5px;
+    background:#1e293b;
+    border-radius:10px
+}
+
+.quick a:hover,.btn:hover{
+    background:#334155
+}
+
+.form-box{
+    max-width:500px;
+    padding:30px
+}
+
+input[type=text],
+input[type=password],
+input[type=file]{
+    width:100%;
+    padding:14px;
+    margin:8px 0 18px;
+    border-radius:12px;
+    border:1px solid #334155;
+    background:#020617;
+    color:#fff
+}
+
+input[type=file]{
+    padding:12px
+}
+
+button{
+    width:100%;
+    padding:14px;
+    border:0;
+    border-radius:12px;
+    background:linear-gradient(135deg,#6366f1,#8b5cf6);
+    color:#fff;
+    font-weight:700;
+    cursor:pointer
+}
+
+.message{
+    color:#f87171;
+    margin-bottom:15px
+}
+
+.profile-card{
+    max-width:500px;
+    padding:35px;
+    text-align:center
+}
+
+.avatar-big{
+    width:140px;
+    height:140px;
+    border-radius:50%;
+    object-fit:cover;
+    background:#1e293b;
+    border:4px solid #312e81;
+    margin-bottom:20px
+}
+
+.placeholder{
+    width:140px;
+    height:140px;
+    border-radius:50%;
+    background:linear-gradient(135deg,#6366f1,#8b5cf6);
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    font-size:60px;
+    margin-bottom:20px
+}
+
+.profile-name{
+    font-size:30px;
+    font-weight:700;
+    margin-bottom:8px
+}
+
+@media(max-width:850px){
+    .sidebar{
+        position:relative;
+        width:100%;
+        height:auto;
+        border-right:0;
+        border-bottom:1px solid #1e293b
+    }
+
+    .logout{
+        position:relative;
+        left:auto;
+        right:auto;
+        bottom:auto;
+        margin-top:20px
+    }
+
+    .main{
+        margin-left:0;
+        padding:20px
+    }
+
+    .grid{
+        grid-template-columns:1fr
+    }
+
+    .topbar{
+        display:block
+    }
+
+    .user{
+        display:inline-flex;
+        margin-top:15px
+    }
+}
+</style>
+"""
+
+
+def sidebar():
+    return """
+    <aside class="sidebar">
+        <div class="logo">🔥 FilipHub</div>
+
+        <div class="menu-title">Menu</div>
+
+        <div class="menu">
+            <a href="/panel">🏠 Dashboard</a>
+            <a href="/profile">👤 Profil</a>
+            <a href="/edit-profile">✏️ Edytuj profil</a>
+            <a href="/change-password">🔐 Zmień hasło</a>
+        </div>
+
+        <div class="logout">
+            <a href="/logout">🚪 Wyloguj się</a>
+        </div>
+    </aside>
+    """
+
+
+def user_data(username):
+    conn = get_db()
+    c = conn.cursor()
+
+    c.execute(
+        "SELECT username, avatar FROM users WHERE username = ?",
+        (username,)
+    )
+
+    row = c.fetchone()
+    conn.close()
+
+    return row
+
+
+LOGIN_HTML = """
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FilipHub</title>
+{{ css|safe }}
+</head>
+
+<body style="min-height:100vh;display:flex;align-items:center;justify-content:center">
+
+<div class="form-box" style="width:400px;max-width:92%">
+
+<h1 style="text-align:center">🔥 FilipHub</h1>
+
+<p class="muted" style="text-align:center">
+Witaj ponownie
+</p>
+
+{% if message %}
+<div class="message">{{ message }}</div>
+{% endif %}
+
+<form method="post">
+
+<input
+type="text"
+name="username"
+placeholder="Nazwa użytkownika"
+required
+>
+
+<input
+type="password"
+name="password"
+placeholder="Hasło"
+required
+>
+
+<button type="submit">
+Zaloguj się
+</button>
+
+</form>
+
+<p class="muted" style="text-align:center;margin-top:20px">
+Nie masz konta?
+
+<a href="/register" style="color:#818cf8">
+Utwórz konto
+</a>
+</p>
+
+</div>
+
+</body>
+</html>
+"""
+
+
+REGISTER_HTML = """
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FilipHub</title>
+{{ css|safe }}
+</head>
+
+<body style="min-height:100vh;display:flex;align-items:center;justify-content:center">
+
+<div class="form-box" style="width:400px;max-width:92%">
+
+<h1 style="text-align:center">🔥 FilipHub</h1>
+
+<p class="muted" style="text-align:center">
+Utwórz konto
+</p>
+
+{% if message %}
+<div class="message">{{ message }}</div>
+{% endif %}
+
+<form method="post">
+
+<input
+type="text"
+name="username"
+placeholder="Nazwa użytkownika"
+required
+>
+
+<input
+type="password"
+name="password"
+placeholder="Hasło"
+required
+>
+
+<button type="submit">
+Utwórz konto
+</button>
+
+</form>
+
+<p class="muted" style="text-align:center;margin-top:20px">
+Masz już konto?
+
+<a href="/" style="color:#818cf8">
+Zaloguj się
+</a>
+</p>
+
+</div>
+
+</body>
+</html>
+"""
+
 
 @app.route("/", methods=["GET", "POST"])
 def login():
@@ -66,16 +489,15 @@ def login():
         username = request.form["username"].strip()
         password = request.form["password"]
 
-        conn = sqlite3.connect(DB)
+        conn = get_db()
         c = conn.cursor()
 
         c.execute(
-            "SELECT * FROM users WHERE username = ?",
+            "SELECT id, username, password FROM users WHERE username = ?",
             (username,)
         )
 
         user = c.fetchone()
-
         conn.close()
 
         if user and check_password_hash(user[2], password):
@@ -86,193 +508,12 @@ def login():
 
         message = "Nieprawidłowy login lub hasło."
 
-    return render_template_string("""
-<!DOCTYPE html>
-<html lang="pl">
+    return render_template_string(
+        LOGIN_HTML,
+        css=CSS,
+        message=message
+    )
 
-<head>
-
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>FilipHub — Logowanie</title>
-
-<style>
-
-* {
-    box-sizing: border-box;
-}
-
-body {
-    margin: 0;
-    min-height: 100vh;
-    font-family: Arial, sans-serif;
-
-    background:
-        radial-gradient(circle at top, #1e293b, #020617);
-
-    color: white;
-
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.box {
-    width: 380px;
-    max-width: 92%;
-
-    padding: 35px;
-
-    background: rgba(15,23,42,.9);
-
-    border: 1px solid rgba(255,255,255,.08);
-
-    border-radius: 22px;
-
-    box-shadow:
-        0 25px 80px rgba(0,0,0,.45);
-}
-
-.logo {
-    text-align: center;
-    margin-bottom: 30px;
-}
-
-.logo h1 {
-    margin: 0;
-    font-size: 34px;
-}
-
-.logo p {
-    color: #94a3b8;
-}
-
-input {
-    width: 100%;
-
-    padding: 14px;
-
-    margin-bottom: 14px;
-
-    border-radius: 12px;
-
-    border: 1px solid #334155;
-
-    background: #0f172a;
-
-    color: white;
-
-    outline: none;
-}
-
-input:focus {
-    border-color: #6366f1;
-}
-
-button {
-    width: 100%;
-
-    padding: 14px;
-
-    border: none;
-
-    border-radius: 12px;
-
-    background:
-        linear-gradient(135deg,#6366f1,#8b5cf6);
-
-    color: white;
-
-    font-weight: bold;
-
-    cursor: pointer;
-}
-
-.message {
-    color: #f87171;
-    text-align: center;
-    margin-top: 15px;
-}
-
-.bottom {
-    text-align: center;
-    margin-top: 20px;
-    color: #94a3b8;
-}
-
-a {
-    color: #818cf8;
-    text-decoration: none;
-}
-
-</style>
-
-</head>
-
-<body>
-
-<div class="box">
-
-<div class="logo">
-
-<h1>🔥 FilipHub</h1>
-
-<p>Witaj ponownie</p>
-
-</div>
-
-<form method="POST">
-
-<input
-    type="text"
-    name="username"
-    placeholder="Nazwa użytkownika"
-    required
->
-
-<input
-    type="password"
-    name="password"
-    placeholder="Hasło"
-    required
->
-
-<button type="submit">
-Zaloguj się
-</button>
-
-</form>
-
-{% if message %}
-
-<div class="message">
-{{ message }}
-</div>
-
-{% endif %}
-
-<div class="bottom">
-
-Nie masz konta?
-
-<a href="/register">
-Utwórz konto
-</a>
-
-</div>
-
-</div>
-
-</body>
-
-</html>
-""", message=message)
-
-
-# =========================
-# REJESTRACJA
-# =========================
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
@@ -294,12 +535,10 @@ def register():
 
         else:
 
-            conn = sqlite3.connect(DB)
+            conn = get_db()
             c = conn.cursor()
 
             try:
-
-                hashed_password = generate_password_hash(password)
 
                 c.execute(
                     """
@@ -307,7 +546,11 @@ def register():
                     (username, password, avatar)
                     VALUES (?, ?, ?)
                     """,
-                    (username, hashed_password, "")
+                    (
+                        username,
+                        generate_password_hash(password),
+                        ""
+                    )
                 )
 
                 conn.commit()
@@ -321,176 +564,12 @@ def register():
 
                 message = "Taki użytkownik już istnieje."
 
-    return render_template_string("""
-<!DOCTYPE html>
-<html lang="pl">
+    return render_template_string(
+        REGISTER_HTML,
+        css=CSS,
+        message=message
+    )
 
-<head>
-
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>FilipHub — Rejestracja</title>
-
-<style>
-
-body {
-    margin: 0;
-
-    min-height: 100vh;
-
-    font-family: Arial, sans-serif;
-
-    background:
-        radial-gradient(circle at top,#1e293b,#020617);
-
-    color: white;
-
-    display: flex;
-
-    justify-content: center;
-    align-items: center;
-}
-
-.box {
-    width: 380px;
-    max-width: 92%;
-
-    padding: 35px;
-
-    background: #0f172a;
-
-    border-radius: 22px;
-
-    border: 1px solid #1e293b;
-}
-
-h1 {
-    text-align: center;
-}
-
-input {
-    width: 100%;
-
-    padding: 14px;
-
-    margin-bottom: 14px;
-
-    border-radius: 12px;
-
-    border: 1px solid #334155;
-
-    background: #020617;
-
-    color: white;
-
-    box-sizing: border-box;
-}
-
-button {
-    width: 100%;
-
-    padding: 14px;
-
-    border: none;
-
-    border-radius: 12px;
-
-    background:
-        linear-gradient(135deg,#6366f1,#8b5cf6);
-
-    color: white;
-
-    font-weight: bold;
-
-    cursor: pointer;
-}
-
-.message {
-    color: #f87171;
-
-    text-align: center;
-
-    margin: 15px 0;
-}
-
-.bottom {
-    text-align: center;
-
-    margin-top: 20px;
-
-    color: #94a3b8;
-}
-
-a {
-    color: #818cf8;
-}
-
-</style>
-
-</head>
-
-<body>
-
-<div class="box">
-
-<h1>🔥 FilipHub</h1>
-
-<p style="text-align:center;color:#94a3b8;">
-Utwórz swoje konto
-</p>
-
-<form method="POST">
-
-<input
-    type="text"
-    name="username"
-    placeholder="Nazwa użytkownika"
-    required
->
-
-<input
-    type="password"
-    name="password"
-    placeholder="Hasło"
-    required
->
-
-<button type="submit">
-Utwórz konto
-</button>
-
-</form>
-
-{% if message %}
-
-<p class="message">
-{{ message }}
-</p>
-
-{% endif %}
-
-<div class="bottom">
-
-Masz już konto?
-
-<a href="/">
-Zaloguj się
-</a>
-
-</div>
-
-</div>
-
-</body>
-
-</html>
-""", message=message)
-
-
-# =========================
-# PANEL
-# =========================
 
 @app.route("/panel")
 def panel():
@@ -500,383 +579,33 @@ def panel():
 
     username = session["username"]
 
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
+    row = user_data(username)
 
-    c.execute(
-        "SELECT avatar FROM users WHERE username = ?",
-        (username,)
-    )
+    avatar = row[1] if row and row[1] else ""
 
-    result = c.fetchone()
-
-    conn.close()
-
-    avatar = result[0] if result and result[0] else ""
-
-    return render_template_string("""
-<!DOCTYPE html>
+    return render_template_string(
+        """
+<!doctype html>
 <html lang="pl">
 
 <head>
 
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>FilipHub — Dashboard</title>
+<meta
+name="viewport"
+content="width=device-width,initial-scale=1"
+>
 
-<style>
+<title>FilipHub - Dashboard</title>
 
-* {
-    box-sizing: border-box;
-}
-
-body {
-    margin: 0;
-
-    font-family: Arial, sans-serif;
-
-    background: #020617;
-
-    color: white;
-}
-
-.sidebar {
-    position: fixed;
-
-    left: 0;
-    top: 0;
-
-    width: 240px;
-
-    height: 100vh;
-
-    background: #0f172a;
-
-    border-right: 1px solid #1e293b;
-
-    padding: 25px 15px;
-}
-
-.logo {
-    font-size: 25px;
-
-    font-weight: bold;
-
-    padding: 10px;
-
-    margin-bottom: 35px;
-}
-
-.menu-title {
-    color: #64748b;
-
-    font-size: 12px;
-
-    text-transform: uppercase;
-
-    padding: 0 12px;
-
-    margin-bottom: 10px;
-}
-
-.menu a {
-    display: block;
-
-    padding: 13px 15px;
-
-    margin-bottom: 7px;
-
-    border-radius: 10px;
-
-    color: #cbd5e1;
-
-    text-decoration: none;
-
-    transition: .2s;
-}
-
-.menu a:hover,
-.menu .active {
-    background: #1e293b;
-
-    color: white;
-
-    transform: translateX(3px);
-}
-
-.logout {
-    position: absolute;
-
-    bottom: 25px;
-
-    left: 15px;
-
-    right: 15px;
-}
-
-.logout a {
-    display: block;
-
-    padding: 13px;
-
-    border-radius: 10px;
-
-    color: #f87171;
-
-    text-decoration: none;
-}
-
-.logout a:hover {
-    background: #2a1518;
-}
-
-.main {
-    margin-left: 240px;
-
-    padding: 35px;
-
-    min-height: 100vh;
-}
-
-.topbar {
-    display: flex;
-
-    justify-content: space-between;
-
-    align-items: center;
-
-    margin-bottom: 35px;
-}
-
-.topbar h1 {
-    margin: 0;
-}
-
-.user {
-    display: flex;
-
-    align-items: center;
-
-    gap: 10px;
-
-    background: #0f172a;
-
-    border: 1px solid #1e293b;
-
-    padding: 8px 14px;
-
-    border-radius: 12px;
-}
-
-.avatar-small {
-    width: 38px;
-    height: 38px;
-
-    border-radius: 50%;
-
-    object-fit: cover;
-
-    background: #1e293b;
-}
-
-.hero {
-    padding: 35px;
-
-    border-radius: 20px;
-
-    background:
-        linear-gradient(135deg,#1e1b4b,#312e81);
-
-    border: 1px solid #4338ca;
-
-    margin-bottom: 25px;
-}
-
-.hero h2 {
-    font-size: 30px;
-
-    margin-top: 0;
-}
-
-.hero p {
-    color: #c7d2fe;
-}
-
-.grid {
-    display: grid;
-
-    grid-template-columns:
-        repeat(3,1fr);
-
-    gap: 20px;
-}
-
-.card {
-    background: #0f172a;
-
-    border: 1px solid #1e293b;
-
-    padding: 25px;
-
-    border-radius: 18px;
-
-    transition: .2s;
-}
-
-.card:hover {
-    transform: translateY(-4px);
-
-    border-color: #475569;
-}
-
-.card-icon {
-    font-size: 28px;
-
-    margin-bottom: 15px;
-}
-
-.card h3 {
-    margin: 0 0 8px;
-}
-
-.card p {
-    color: #94a3b8;
-
-    line-height: 1.5;
-}
-
-.quick {
-    margin-top: 25px;
-
-    padding: 25px;
-
-    background: #0f172a;
-
-    border: 1px solid #1e293b;
-
-    border-radius: 18px;
-}
-
-.quick h2 {
-    margin-top: 0;
-}
-
-.quick a {
-    display: inline-block;
-
-    padding: 12px 18px;
-
-    margin: 5px;
-
-    background: #1e293b;
-
-    border-radius: 10px;
-
-    color: white;
-
-    text-decoration: none;
-}
-
-.quick a:hover {
-    background: #334155;
-}
-
-@media (max-width:850px) {
-
-    .sidebar {
-        position: relative;
-
-        width: 100%;
-
-        height: auto;
-
-        border-right: none;
-
-        border-bottom: 1px solid #1e293b;
-    }
-
-    .logo {
-        text-align: center;
-    }
-
-    .logout {
-        position: relative;
-
-        left: auto;
-        right: auto;
-        bottom: auto;
-
-        margin-top: 20px;
-    }
-
-    .main {
-        margin-left: 0;
-
-        padding: 20px;
-    }
-
-    .grid {
-        grid-template-columns: 1fr;
-    }
-
-    .topbar {
-        display: block;
-    }
-
-    .user {
-        display: inline-flex;
-
-        margin-top: 15px;
-    }
-}
-
-</style>
+{{ css|safe }}
 
 </head>
 
 <body>
 
-<aside class="sidebar">
-
-<div class="logo">
-🔥 FilipHub
-</div>
-
-<div class="menu-title">
-Menu
-</div>
-
-<div class="menu">
-
-<a href="/panel" class="active">
-🏠 Dashboard
-</a>
-
-<a href="/profile">
-👤 Profil
-</a>
-
-<a href="/edit-profile">
-✏️ Edytuj profil
-</a>
-
-<a href="/change-password">
-🔐 Zmień hasło
-</a>
-
-</div>
-
-<div class="logout">
-
-<a href="/logout">
-🚪 Wyloguj się
-</a>
-
-</div>
-
-</aside>
-
+{{ sidebar|safe }}
 
 <main class="main">
 
@@ -886,7 +615,7 @@ Menu
 
 <h1>Dashboard</h1>
 
-<p style="color:#64748b;">
+<p class="muted">
 Centrum Twojego konta
 </p>
 
@@ -897,14 +626,16 @@ Centrum Twojego konta
 {% if avatar %}
 
 <img
-    src="{{ url_for('static', filename='uploads/' + avatar) }}"
-    class="avatar-small"
+class="avatar-small"
+src="{{ url_for('static', filename='uploads/' + avatar) }}"
 >
 
 {% else %}
 
-<div class="avatar-small"
-     style="display:flex;align-items:center;justify-content:center;font-size:22px;">
+<div
+class="avatar-small"
+style="display:flex;align-items:center;justify-content:center;font-size:22px"
+>
 👤
 </div>
 
@@ -963,7 +694,7 @@ Twój profil
 
 <p>
 Ustaw własne zdjęcie profilowe
-i zmieniaj dane swojego profilu.
+i zmieniaj dane konta.
 </p>
 
 </div>
@@ -1012,14 +743,14 @@ Szybkie akcje
 </main>
 
 </body>
-
 </html>
-""", username=username, avatar=avatar)
+        """,
+        css=CSS,
+        sidebar=sidebar(),
+        username=username,
+        avatar=avatar
+    )
 
-
-# =========================
-# PROFIL
-# =========================
 
 @app.route("/profile")
 def profile():
@@ -1029,179 +760,97 @@ def profile():
 
     username = session["username"]
 
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
+    row = user_data(username)
 
-    c.execute(
-        "SELECT avatar FROM users WHERE username = ?",
-        (username,)
-    )
+    avatar = row[1] if row and row[1] else ""
 
-    result = c.fetchone()
-
-    conn.close()
-
-    avatar = result[0] if result and result[0] else ""
-
-    return render_template_string("""
-<!DOCTYPE html>
+    return render_template_string(
+        """
+<!doctype html>
 <html lang="pl">
 
 <head>
 
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>FilipHub — Profil</title>
+<meta
+name="viewport"
+content="width=device-width,initial-scale=1"
+>
 
-<style>
+<title>FilipHub - Profil</title>
 
-body {
-    margin: 0;
-
-    min-height: 100vh;
-
-    font-family: Arial, sans-serif;
-
-    background: #020617;
-
-    color: white;
-
-    display: flex;
-
-    justify-content: center;
-
-    align-items: center;
-}
-
-.box {
-    width: 420px;
-
-    max-width: 92%;
-
-    background: #0f172a;
-
-    border: 1px solid #1e293b;
-
-    border-radius: 22px;
-
-    padding: 40px;
-
-    text-align: center;
-}
-
-.avatar {
-    width: 130px;
-    height: 130px;
-
-    margin: auto;
-
-    border-radius: 50%;
-
-    object-fit: cover;
-
-    background:
-        linear-gradient(135deg,#6366f1,#8b5cf6);
-
-    border: 4px solid #312e81;
-
-    box-shadow:
-        0 15px 40px rgba(99,102,241,.25);
-}
-
-.username {
-    font-size: 30px;
-
-    font-weight: bold;
-
-    margin-top: 20px;
-}
-
-.info {
-    color: #94a3b8;
-
-    margin-top: 8px;
-}
-
-.buttons {
-    margin-top: 30px;
-}
-
-a {
-    display: block;
-
-    margin-top: 10px;
-
-    padding: 13px;
-
-    border-radius: 11px;
-
-    background: #1e293b;
-
-    color: white;
-
-    text-decoration: none;
-}
-
-a:hover {
-    background: #334155;
-}
-
-</style>
+{{ css|safe }}
 
 </head>
 
 <body>
 
-<div class="box">
+{{ sidebar|safe }}
+
+<main class="main">
+
+<div class="topbar">
+
+<h1>
+Twój profil
+</h1>
+
+</div>
+
+
+<div class="profile-card">
 
 {% if avatar %}
 
 <img
-    src="{{ url_for('static', filename='uploads/' + avatar) }}"
-    class="avatar"
+class="avatar-big"
+src="{{ url_for('static', filename='uploads/' + avatar) }}"
 >
 
 {% else %}
 
-<div class="avatar"
-     style="display:flex;align-items:center;justify-content:center;font-size:60px;">
+<div class="placeholder">
 👤
 </div>
 
 {% endif %}
 
-<div class="username">
+
+<div class="profile-name">
 {{ username }}
 </div>
 
-<div class="info">
+<div class="muted">
 Użytkownik FilipHub
 </div>
 
-<div class="buttons">
 
-<a href="/edit-profile">
+<div style="margin-top:25px">
+
+<a class="btn" href="/edit-profile">
 ✏️ Edytuj profil
 </a>
 
-<a href="/panel">
-🏠 Wróć do dashboardu
+<a class="btn" href="/panel">
+🏠 Dashboard
 </a>
 
 </div>
 
 </div>
 
+</main>
+
 </body>
-
 </html>
-""", username=username, avatar=avatar)
+        """,
+        css=CSS,
+        sidebar=sidebar(),
+        username=username,
+        avatar=avatar
+    )
 
-
-# =========================
-# EDYCJA PROFILU
-# =========================
 
 @app.route("/edit-profile", methods=["GET", "POST"])
 def edit_profile():
@@ -1211,238 +860,413 @@ def edit_profile():
 
     old_username = session["username"]
 
+    row = user_data(old_username)
+
+    current_avatar = row[1] if row and row[1] else ""
+
     message = ""
-
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-
-    c.execute(
-        "SELECT avatar FROM users WHERE username = ?",
-        (old_username,)
-    )
-
-    result = c.fetchone()
-
-    current_avatar = result[0] if result and result[0] else ""
-
-    conn.close()
 
     if request.method == "POST":
 
         new_username = request.form["username"].strip()
 
+        file = request.files.get("avatar")
+
+        new_avatar = current_avatar
+
         if len(new_username) < 3:
 
             message = "Nazwa użytkownika musi mieć minimum 3 znaki."
 
+        elif file and file.filename and not allowed_file(file.filename):
+
+            message = "Dozwolone formaty: JPG, JPEG, PNG, WEBP."
+
         else:
 
-            conn = sqlite3.connect(DB)
+            if file and file.filename:
+
+                extension = secure_filename(
+                    file.filename
+                ).rsplit(".", 1)[1].lower()
+
+                filename = uuid.uuid4().hex + "." + extension
+
+                filepath = os.path.join(
+                    app.config["UPLOAD_FOLDER"],
+                    filename
+                )
+
+                file.save(filepath)
+
+                new_avatar = filename
+
+
+            conn = get_db()
             c = conn.cursor()
 
             try:
 
-                avatar_filename = current_avatar
+                c.execute(
+                    """
+                    UPDATE users
 
-                uploaded_file = request.files.get("avatar")
+                    SET username = ?,
+                        avatar = ?
 
-                if uploaded_file and uploaded_file.filename:
+                    WHERE username = ?
+                    """,
+                    (
+                        new_username,
+                        new_avatar,
+                        old_username
+                    )
+                )
 
-                    if not allowed_file(uploaded_file.filename):
+                conn.commit()
+                conn.close()
 
-                        conn.close()
 
-                        message = (
-                            "Dozwolone formaty: JPG, JPEG, PNG, WEBP."
-                        )
+                if current_avatar and new_avatar != current_avatar:
 
-                    else:
-
-                        extension = secure_filename(
-                            uploaded_file.filename
-                        ).rsplit(".", 1)[1].lower()
-
-                        new_filename = (
-                            str(uuid.uuid4())
-                            + "."
-                            + extension
-                        )
-
-                        filepath = os.path.join(
-                            app.config["UPLOAD_FOLDER"],
-                            new_filename
-                        )
-
-                        uploaded_file.save(filepath)
-
-                        old_file = None
-
-                        if current_avatar:
-                            old_file = os.path.join(
-                                app.config["UPLOAD_FOLDER"],
-                                current_avatar
-                            )
-
-                        if old_file and os.path.exists(old_file):
-
-                            try:
-                                os.remove(old_file)
-                            except OSError:
-                                pass
-
-                        avatar_filename = new_filename
-
-                if not message:
-
-                    c.execute(
-                        """
-                        UPDATE users
-
-                        SET username = ?,
-                            avatar = ?
-
-                        WHERE username = ?
-                        """,
-                        (
-                            new_username,
-                            avatar_filename,
-                            old_username
-                        )
+                    old_file = os.path.join(
+                        app.config["UPLOAD_FOLDER"],
+                        current_avatar
                     )
 
-                    conn.commit()
-                    conn.close()
+                    if os.path.exists(old_file):
 
-                    session["username"] = new_username
+                        try:
+                            os.remove(old_file)
+                        except OSError:
+                            pass
 
-                    return redirect("/profile")
+
+                session["username"] = new_username
+
+                return redirect("/profile")
+
 
             except sqlite3.IntegrityError:
 
                 conn.close()
 
-                message = (
-                    "Taka nazwa użytkownika już istnieje."
-                )
+                if new_avatar != current_avatar:
 
-    return render_template_string("""
-<!DOCTYPE html>
+                    new_file = os.path.join(
+                        app.config["UPLOAD_FOLDER"],
+                        new_avatar
+                    )
+
+                    if os.path.exists(new_file):
+
+                        os.remove(new_file)
+
+                message = "Taka nazwa użytkownika już istnieje."
+
+
+    return render_template_string(
+        """
+<!doctype html>
 <html lang="pl">
 
 <head>
 
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>FilipHub — Edycja profilu</title>
+<meta
+name="viewport"
+content="width=device-width,initial-scale=1"
+>
 
-<style>
+<title>FilipHub - Edytuj profil</title>
 
-body {
-    margin: 0;
+{{ css|safe }}
 
-    min-height: 100vh;
+</head>
 
-    font-family: Arial, sans-serif;
+<body>
 
-    background: #020617;
+{{ sidebar|safe }}
 
-    color: white;
+<main class="main">
 
-    display: flex;
+<div class="topbar">
 
-    justify-content: center;
+<h1>
+Edytuj profil
+</h1>
 
-    align-items: center;
-}
+</div>
 
-.box {
-    width: 430px;
 
-    max-width: 92%;
+<div class="form-box">
 
-    background: #0f172a;
+{% if message %}
 
-    border: 1px solid #1e293b;
+<div class="message">
+{{ message }}
+</div>
 
-    border-radius: 22px;
+{% endif %}
 
-    padding: 35px;
-}
 
-h1 {
-    margin-top: 0;
-}
+<div style="text-align:center">
 
-.preview {
-    text-align: center;
+{% if current_avatar %}
 
-    margin: 25px 0;
-}
+<img
+class="avatar-big"
+src="{{ url_for('static', filename='uploads/' + current_avatar) }}"
+>
 
-.preview img {
-    width: 120px;
-    height: 120px;
+{% else %}
 
-    border-radius: 50%;
+<div class="placeholder">
+👤
+</div>
 
-    object-fit: cover;
+{% endif %}
 
-    border: 4px solid #312e81;
-}
+</div>
 
-.avatar-placeholder {
-    width: 120px;
-    height: 120px;
 
-    margin: auto;
+<form
+method="post"
+enctype="multipart/form-data"
+>
 
-    border-radius: 50%;
+<label>
+Nazwa użytkownika
+</label>
 
-    background:
-        linear-gradient(135deg,#6366f1,#8b5cf6);
+<input
+type="text"
+name="username"
+value="{{ old_username }}"
+minlength="3"
+required
+>
 
-    display: flex;
 
-    align-items: center;
-    justify-content: center;
+<label>
+Zdjęcie profilowe
+</label>
 
-    font-size: 55px;
-}
+<input
+type="file"
+name="avatar"
+accept=".jpg,.jpeg,.png,.webp"
+>
 
-label {
-    display: block;
+<p class="muted">
+JPG, JPEG, PNG lub WEBP.
+Maksymalnie 5 MB.
+</p>
 
-    margin-bottom: 8px;
 
-    color: #cbd5e1;
-}
+<button type="submit">
+💾 Zapisz zmiany
+</button>
 
-input[type="text"] {
-    width: 100%;
+</form>
 
-    padding: 14px;
+</div>
 
-    margin-bottom: 20px;
+</main>
 
-    border-radius: 12px;
+</body>
 
-    border: 1px solid #334155;
+</html>
+        """,
+        css=CSS,
+        sidebar=sidebar(),
+        old_username=old_username,
+        current_avatar=current_avatar,
+        message=message
+    )
 
-    background: #020617;
 
-    color: white;
+@app.route("/change-password", methods=["GET", "POST"])
+def change_password():
 
-    box-sizing: border-box;
-}
+    if "username" not in session:
+        return redirect("/")
 
-input[type="file"] {
-    width: 100%;
+    username = session["username"]
 
-    padding: 12px;
+    message = ""
 
-    margin-bottom: 20px;
+    if request.method == "POST":
 
-    border-radius: 12px;
+        current = request.form["current_password"]
 
-    border: 1px solid #
+        new = request.form["new_password"]
+
+        confirm = request.form["confirm_password"]
+
+
+        conn = get_db()
+
+        c = conn.cursor()
+
+        c.execute(
+            "SELECT password FROM users WHERE username = ?",
+            (username,)
+        )
+
+        row = c.fetchone()
+
+
+        if not row:
+
+            conn.close()
+
+            return redirect("/")
+
+
+        if not check_password_hash(row[0], current):
+
+            message = "Obecne hasło jest nieprawidłowe."
+
+        elif len(new) < 6:
+
+            message = "Nowe hasło musi mieć minimum 6 znaków."
+
+        elif new != confirm:
+
+            message = "Hasła nie są takie same."
+
+        elif check_password_hash(row[0], new):
+
+            message = "Nowe hasło musi być inne."
+
+        else:
+
+            c.execute(
+                """
+                UPDATE users
+
+                SET password = ?
+
+                WHERE username = ?
+                """,
+                (
+                    generate_password_hash(new),
+                    username
+                )
+            )
+
+            conn.commit()
+
+            conn.close()
+
+            return redirect("/panel")
+
+
+        conn.close()
+
+
+    return render_template_string(
+        """
+<!doctype html>
+<html lang="pl">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta
+name="viewport"
+content="width=device-width,initial-scale=1"
+>
+
+<title>FilipHub - Zmień hasło</title>
+
+{{ css|safe }}
+
+</head>
+
+<body>
+
+{{ sidebar|safe }}
+
+<main class="main">
+
+<div class="topbar">
+
+<h1>
+Zmień hasło
+</h1>
+
+</div>
+
+
+<div class="form-box">
+
+{% if message %}
+
+<div class="message">
+{{ message }}
+</div>
+
+{% endif %}
+
+
+<form method="post">
+
+<input
+type="password"
+name="current_password"
+placeholder="Obecne hasło"
+required
+>
+
+<input
+type="password"
+name="new_password"
+placeholder="Nowe hasło"
+required
+>
+
+<input
+type="password"
+name="confirm_password"
+placeholder="Powtórz nowe hasło"
+required
+>
+
+<button type="submit">
+🔐 Zmień hasło
+</button>
+
+</form>
+
+</div>
+
+</main>
+
+</body>
+
+</html>
+        """,
+        css=CSS,
+        sidebar=sidebar(),
+        message=message
+    )
+
+
+@app.route("/logout")
+def logout():
+
+    session.clear()
+
+    return redirect("/")
+
+
+if __name__ == "__main__":
+
+    app.run(
+        host="0.0.0.0",
+        port=8080
+    )
