@@ -87,6 +87,7 @@ def login():
             margin: 8px;
             border-radius: 8px;
             border: none;
+            box-sizing: border-box;
         }
 
         button {
@@ -105,10 +106,12 @@ def login():
 <body>
 
 <div class="box">
+
     <h1>🔥 FilipHub</h1>
     <h2>Logowanie</h2>
 
     <form method="POST">
+
         <input
             type="text"
             name="username"
@@ -126,6 +129,7 @@ def login():
         <button type="submit">
             Zaloguj
         </button>
+
     </form>
 
     <p>{{ message }}</p>
@@ -134,6 +138,7 @@ def login():
         Nie masz konta?
         <a href="/register">Zarejestruj się</a>
     </p>
+
 </div>
 
 </body>
@@ -206,6 +211,7 @@ def register():
             margin: 8px;
             border-radius: 8px;
             border: none;
+            box-sizing: border-box;
         }
 
         button {
@@ -295,7 +301,7 @@ def panel():
         nav a {
             color: white;
             text-decoration: none;
-            margin: 0 15px;
+            margin: 0 12px;
         }
 
         .container {
@@ -329,17 +335,20 @@ def panel():
 <nav>
     <a href="/panel">🏠 Start</a>
     <a href="/profile">👤 Profil</a>
+    <a href="/change-password">🔐 Zmień hasło</a>
     <a href="/logout">🚪 Wyloguj</a>
 </nav>
 
 <div class="container">
 
     <div class="welcome">
+
         <h1>🔥 Witaj, {{ username }}!</h1>
 
         <p>
             Jesteś zalogowany.
         </p>
+
     </div>
 
     <div class="future">
@@ -418,6 +427,204 @@ def profile():
 </body>
 </html>
 """, username=username)
+
+
+@app.route("/change-password", methods=["GET", "POST"])
+def change_password():
+    if "username" not in session:
+        return redirect("/")
+
+    message = ""
+
+    if request.method == "POST":
+        current_password = request.form["current_password"]
+        new_password = request.form["new_password"]
+        confirm_password = request.form["confirm_password"]
+
+        username = session["username"]
+
+        conn = sqlite3.connect(DB)
+        c = conn.cursor()
+
+        c.execute(
+            "SELECT * FROM users WHERE username = ?",
+            (username,)
+        )
+
+        user = c.fetchone()
+
+        if not user:
+            conn.close()
+            return redirect("/")
+
+        if not check_password_hash(user[2], current_password):
+            message = "❌ Obecne hasło jest nieprawidłowe."
+
+        elif len(new_password) < 6:
+            message = "❌ Nowe hasło musi mieć minimum 6 znaków."
+
+        elif new_password != confirm_password:
+            message = "❌ Nowe hasła nie są takie same."
+
+        elif check_password_hash(user[2], new_password):
+            message = "❌ Nowe hasło musi być inne od obecnego."
+
+        else:
+            hashed_password = generate_password_hash(new_password)
+
+            c.execute(
+                "UPDATE users SET password = ? WHERE username = ?",
+                (hashed_password, username)
+            )
+
+            conn.commit()
+            conn.close()
+
+            message = "✅ Hasło zostało zmienione!"
+
+            return render_template_string("""
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Hasło zmienione</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #111;
+            color: white;
+            text-align: center;
+            padding-top: 80px;
+        }
+
+        .box {
+            background: #222;
+            padding: 30px;
+            margin: auto;
+            max-width: 400px;
+            border-radius: 15px;
+        }
+
+        a {
+            color: #4da6ff;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="box">
+
+    <h1>🔐 Hasło zmienione!</h1>
+
+    <p>Twoje hasło zostało pomyślnie zmienione.</p>
+
+    <br>
+
+    <a href="/panel">🏠 Wróć do panelu</a>
+
+</div>
+
+</body>
+</html>
+""")
+
+        conn.close()
+
+    return render_template_string("""
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>FilipHub - Zmiana hasła</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #111;
+            color: white;
+            text-align: center;
+            padding-top: 60px;
+        }
+
+        .box {
+            background: #222;
+            padding: 30px;
+            margin: auto;
+            width: 320px;
+            border-radius: 15px;
+        }
+
+        input {
+            width: 90%;
+            padding: 12px;
+            margin: 8px;
+            border-radius: 8px;
+            border: none;
+            box-sizing: border-box;
+        }
+
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        a {
+            color: #4da6ff;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="box">
+
+    <h1>🔐 Zmień hasło</h1>
+
+    <form method="POST">
+
+        <input
+            type="password"
+            name="current_password"
+            placeholder="Obecne hasło"
+            required
+        >
+
+        <input
+            type="password"
+            name="new_password"
+            placeholder="Nowe hasło"
+            required
+        >
+
+        <input
+            type="password"
+            name="confirm_password"
+            placeholder="Powtórz nowe hasło"
+            required
+        >
+
+        <button type="submit">
+            Zmień hasło
+        </button>
+
+    </form>
+
+    <p>{{ message }}</p>
+
+    <br>
+
+    <a href="/panel">🏠 Wróć do panelu</a>
+
+</div>
+
+</body>
+</html>
+""", message=message)
 
 
 @app.route("/logout")
