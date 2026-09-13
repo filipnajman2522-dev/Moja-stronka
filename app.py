@@ -5,8 +5,10 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 
-# Sekret pobierany ze zmiennej środowiskowej
-app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-me")
+app.secret_key = os.environ.get(
+    "SECRET_KEY",
+    "dev-secret-change-me"
+)
 
 
 def db():
@@ -91,6 +93,7 @@ a {
 </head>
 
 <body>
+
 <div class="box">
 
 <h1>🔐 {{ title }}</h1>
@@ -127,6 +130,7 @@ Nie masz konta?
 </p>
 
 </div>
+
 </body>
 </html>
 """
@@ -218,14 +222,17 @@ def panel():
 
     return f"""
 <!DOCTYPE html>
+
 <html lang="pl">
 
 <head>
 
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
 
-<title>FilipHub - Panel</title>
+<meta name="viewport"
+      content="width=device-width,initial-scale=1">
+
+<title>FilipHub</title>
 
 <style>
 
@@ -240,13 +247,15 @@ body {{
     font-family: Arial, sans-serif;
 }}
 
-.nav {{
+nav {{
     height: 70px;
     background: #111;
     border-bottom: 1px solid #222;
+
     display: flex;
     align-items: center;
     justify-content: space-between;
+
     padding: 0 25px;
 }}
 
@@ -256,52 +265,212 @@ body {{
     font-weight: bold;
 }}
 
-.logout {{
+nav a {{
     color: white;
     text-decoration: none;
-    background: #222;
-    padding: 10px 15px;
-    border-radius: 10px;
+    margin-left: 18px;
 }}
 
 .container {{
-    max-width: 900px;
+    max-width: 1000px;
     margin: 50px auto;
     padding: 20px;
 }}
 
-.welcome {{
+.hero {{
     background: #121212;
-    padding: 30px;
+    padding: 35px;
     border-radius: 20px;
     box-shadow: 0 0 30px #00ff8820;
 }}
 
-.welcome h1 {{
+.hero h1 {{
     color: #00ff88;
+    font-size: 32px;
 }}
 
 .cards {{
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 15px;
-    margin-top: 20px;
+    grid-template-columns:
+        repeat(auto-fit, minmax(220px, 1fr));
+
+    gap: 20px;
+    margin-top: 25px;
 }}
 
 .card {{
     background: #121212;
     border: 1px solid #222;
-    border-radius: 15px;
-    padding: 20px;
+    padding: 25px;
+    border-radius: 18px;
 }}
 
 .card h2 {{
     color: #00ff88;
 }}
 
-.status {{
-    color: #00ff88;
+.button {{
+    display: inline-block;
+    margin-top: 15px;
+    padding: 12px 18px;
+
+    background: #00ff88;
+    color: #000;
+
+    text-decoration: none;
+    border-radius: 10px;
+
     font-weight: bold;
+}}
+
+</style>
+
+</head>
+
+
+<body>
+
+
+<nav>
+
+<div class="logo">
+🔥 FilipHub
+</div>
+
+<div>
+
+<a href="/panel">
+🏠 Start
+</a>
+
+<a href="/profile">
+👤 Profil
+</a>
+
+<a href="/logout">
+🚪 Wyloguj
+</a>
+
+</div>
+
+</nav>
+
+
+<div class="container">
+
+
+<div class="hero">
+
+<h1>
+Witaj, {username}! 👋
+</h1>
+
+<p>
+To jest strona główna Twojego panelu użytkownika.
+</p>
+
+<a class="button" href="/profile">
+Zobacz profil
+</a>
+
+</div>
+
+
+<div class="cards">
+
+
+<div class="card">
+
+<h2>👤 Konto</h2>
+
+<p>
+Zalogowany jako:
+</p>
+
+<b>{username}</b>
+
+</div>
+
+
+<div class="card">
+
+<h2>🟢 Status</h2>
+
+<p>
+Twoja sesja jest aktywna.
+</p>
+
+</div>
+
+
+<div class="card">
+
+<h2>🌐 FilipHub</h2>
+
+<p>
+Witaj w swoim panelu!
+</p>
+
+</div>
+
+
+</div>
+
+</div>
+
+
+</body>
+
+</html>
+"""
+
+
+@app.route("/profile")
+def profile():
+
+    if "username" not in session:
+        return redirect("/")
+
+    username = session["username"]
+
+    return f"""
+<!DOCTYPE html>
+
+<html lang="pl">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+      content="width=device-width,initial-scale=1">
+
+<title>Profil - FilipHub</title>
+
+<style>
+
+body {{
+    margin: 0;
+    background: #080808;
+    color: white;
+    font-family: Arial, sans-serif;
+    text-align: center;
+}}
+
+.box {{
+    max-width: 500px;
+    margin: 100px auto;
+    background: #121212;
+    padding: 35px;
+    border-radius: 20px;
+}}
+
+h1 {{
+    color: #00ff88;
+}}
+
+a {{
+    color: #00ff88;
 }}
 
 </style>
@@ -310,78 +479,26 @@ body {{
 
 <body>
 
-<div class="nav">
+<div class="box">
 
-<div class="logo">
-🔥 FilipHub
-</div>
+<h1>👤 Profil</h1>
 
-<a class="logout" href="/logout">
-Wyloguj
+<h2>{username}</h2>
+
+<p>
+Status: 🟢 Zalogowany
+</p>
+
+<p>
+<a href="/panel">
+🏠 Wróć do panelu
 </a>
-
-</div>
-
-
-<div class="container">
-
-<div class="welcome">
-
-<h1>
-Witaj, {username}! 👋
-</h1>
-
-<p>
-Właśnie znajdujesz się w swoim panelu użytkownika.
 </p>
-
-<p>
-Status:
-<span class="status">● ZALOGOWANY</span>
-</p>
-
-</div>
-
-
-<div class="cards">
-
-<div class="card">
-
-<h2>👤 Konto</h2>
-
-<p>
-Użytkownik: <b>{username}</b>
-</p>
-
-</div>
-
-
-<div class="card">
-
-<h2>🔐 Bezpieczeństwo</h2>
-
-<p>
-Hasło jest przechowywane jako hash.
-</p>
-
-</div>
-
-
-<div class="card">
-
-<h2>🌐 Serwer</h2>
-
-<p>
-FilipHub działa online.
-</p>
-
-</div>
-
-</div>
 
 </div>
 
 </body>
+
 </html>
 """
 
@@ -395,4 +512,8 @@ def logout():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
+
+    app.run(
+        host="0.0.0.0",
+        port=8080
+    )
