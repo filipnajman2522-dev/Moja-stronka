@@ -5,56 +5,118 @@ import uuid
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
+
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "filiphub-dev-secret")
+
+app.secret_key = os.environ.get(
+    "SECRET_KEY",
+    "filiphub-dev-secret"
+)
+
 
 DB = "users.db"
-UPLOAD_FOLDER = "static/uploads"
-ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
 
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+UPLOAD_FOLDER = "static/uploads"
+
+ALLOWED_EXTENSIONS = {
+    "jpg",
+    "jpeg",
+    "png",
+    "webp"
+}
+
+
+os.makedirs(
+    UPLOAD_FOLDER,
+    exist_ok=True
+)
+
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
 
+
+# =========================================================
+# DATABASE
+# =========================================================
 
 def get_db():
     return sqlite3.connect(DB)
 
 
 def allowed_file(filename):
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+    return (
+        "." in filename
+        and
+        filename.rsplit(".", 1)[1].lower()
+        in ALLOWED_EXTENSIONS
+    )
 
 
 def init_db():
+
     conn = get_db()
+
     c = conn.cursor()
 
     c.execute("""
         CREATE TABLE IF NOT EXISTS users (
+
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+
             username TEXT UNIQUE NOT NULL,
+
             password TEXT NOT NULL,
+
             avatar TEXT DEFAULT ''
+
         )
     """)
 
     try:
-        c.execute("ALTER TABLE users ADD COLUMN avatar TEXT DEFAULT ''")
+
+        c.execute(
+            "ALTER TABLE users ADD COLUMN avatar TEXT DEFAULT ''"
+        )
+
     except sqlite3.OperationalError:
+
         pass
 
     conn.commit()
+
     conn.close()
 
 
 init_db()
 
 
+# =========================================================
+# CSS
+# =========================================================
+
 CSS = """
 <style>
-*{box-sizing:border-box}
-body{margin:0;font-family:Arial,sans-serif;background:#020617;color:#fff}
-a{text-decoration:none;color:inherit}
+
+*{
+    box-sizing:border-box;
+}
+
+body{
+    margin:0;
+    font-family:Arial,sans-serif;
+    background:#020617;
+    color:#fff;
+}
+
+a{
+    text-decoration:none;
+    color:inherit;
+}
+
+
+/* SIDEBAR */
 
 .sidebar{
     position:fixed;
@@ -64,14 +126,15 @@ a{text-decoration:none;color:inherit}
     height:100vh;
     background:#0f172a;
     border-right:1px solid #1e293b;
-    padding:25px 15px
+    padding:25px 15px;
+    z-index:10;
 }
 
 .logo{
     font-size:25px;
     font-weight:700;
     padding:10px;
-    margin-bottom:35px
+    margin-bottom:35px;
 }
 
 .menu-title{
@@ -79,7 +142,7 @@ a{text-decoration:none;color:inherit}
     font-size:12px;
     text-transform:uppercase;
     padding:0 12px;
-    margin-bottom:10px
+    margin-bottom:10px;
 }
 
 .menu a{
@@ -87,42 +150,51 @@ a{text-decoration:none;color:inherit}
     padding:13px 15px;
     margin-bottom:7px;
     border-radius:10px;
-    color:#cbd5e1
+    color:#cbd5e1;
 }
 
 .menu a:hover{
     background:#1e293b;
-    color:#fff
+    color:#fff;
 }
 
 .logout{
     position:absolute;
     bottom:25px;
     left:15px;
-    right:15px
+    right:15px;
 }
 
 .logout a{
     display:block;
     padding:13px;
     border-radius:10px;
-    color:#f87171
+    color:#f87171;
 }
+
+.logout a:hover{
+    background:#1e293b;
+}
+
+
+/* MAIN */
 
 .main{
     margin-left:240px;
     padding:35px;
-    min-height:100vh
+    min-height:100vh;
 }
 
 .topbar{
     display:flex;
     justify-content:space-between;
     align-items:center;
-    margin-bottom:30px
+    margin-bottom:30px;
 }
 
-.topbar h1{margin:0}
+.topbar h1{
+    margin:0;
+}
 
 .user{
     display:flex;
@@ -131,7 +203,7 @@ a{text-decoration:none;color:inherit}
     background:#0f172a;
     border:1px solid #1e293b;
     padding:8px 14px;
-    border-radius:12px
+    border-radius:12px;
 }
 
 .avatar-small{
@@ -139,81 +211,104 @@ a{text-decoration:none;color:inherit}
     height:40px;
     border-radius:50%;
     object-fit:cover;
-    background:#1e293b
+    background:#1e293b;
 }
+
+
+/* HERO */
 
 .hero{
     padding:35px;
     border-radius:20px;
-    background:linear-gradient(135deg,#1e1b4b,#312e81);
+    background:linear-gradient(
+        135deg,
+        #1e1b4b,
+        #312e81
+    );
     border:1px solid #4338ca;
-    margin-bottom:25px
+    margin-bottom:25px;
 }
 
 .hero h2{
     font-size:30px;
-    margin:0 0 10px
+    margin:0 0 10px;
 }
 
-.hero p,.muted{
-    color:#94a3b8
+.hero p,
+.muted{
+    color:#94a3b8;
 }
+
+
+/* GRID */
 
 .grid{
     display:grid;
     grid-template-columns:repeat(3,1fr);
-    gap:20px
+    gap:20px;
 }
 
-.card,.quick,.form-box,.profile-card{
+.card,
+.quick,
+.form-box,
+.profile-card{
     background:#0f172a;
     border:1px solid #1e293b;
-    border-radius:18px
+    border-radius:18px;
 }
 
 .card{
-    padding:25px
+    padding:25px;
+    transition:.2s;
 }
 
 .card:hover{
     border-color:#475569;
-    transform:translateY(-3px)
+    transform:translateY(-3px);
 }
 
 .card-icon{
     font-size:28px;
-    margin-bottom:15px
+    margin-bottom:15px;
 }
 
 .card h3{
-    margin:0 0 8px
+    margin:0 0 8px;
 }
 
 .card p{
     color:#94a3b8;
-    line-height:1.5
+    line-height:1.5;
 }
+
+
+/* QUICK */
 
 .quick{
     margin-top:25px;
-    padding:25px
+    padding:25px;
 }
 
-.quick a,.btn{
+.quick a,
+.btn{
     display:inline-block;
     padding:12px 18px;
     margin:5px;
     background:#1e293b;
-    border-radius:10px
+    border-radius:10px;
 }
 
-.quick a:hover,.btn:hover{
-    background:#334155
+.quick a:hover,
+.btn:hover{
+    background:#334155;
 }
+
+
+/* FORMS */
 
 .form-box{
     max-width:500px;
-    padding:30px
+    padding:30px;
 }
 
 input[type=text],
@@ -225,11 +320,11 @@ input[type=file]{
     border-radius:12px;
     border:1px solid #334155;
     background:#020617;
-    color:#fff
+    color:#fff;
 }
 
 input[type=file]{
-    padding:12px
+    padding:12px;
 }
 
 button{
@@ -237,21 +332,32 @@ button{
     padding:14px;
     border:0;
     border-radius:12px;
-    background:linear-gradient(135deg,#6366f1,#8b5cf6);
+    background:linear-gradient(
+        135deg,
+        #6366f1,
+        #8b5cf6
+    );
     color:#fff;
     font-weight:700;
-    cursor:pointer
+    cursor:pointer;
+}
+
+button:hover{
+    opacity:.9;
 }
 
 .message{
     color:#f87171;
-    margin-bottom:15px
+    margin-bottom:15px;
 }
+
+
+/* PROFILE */
 
 .profile-card{
     max-width:500px;
     padding:35px;
-    text-align:center
+    text-align:center;
 }
 
 .avatar-big{
@@ -261,34 +367,116 @@ button{
     object-fit:cover;
     background:#1e293b;
     border:4px solid #312e81;
-    margin-bottom:20px
+    margin-bottom:20px;
 }
 
 .placeholder{
     width:140px;
     height:140px;
     border-radius:50%;
-    background:linear-gradient(135deg,#6366f1,#8b5cf6);
+    background:linear-gradient(
+        135deg,
+        #6366f1,
+        #8b5cf6
+    );
     display:inline-flex;
     align-items:center;
     justify-content:center;
     font-size:60px;
-    margin-bottom:20px
+    margin-bottom:20px;
 }
 
 .profile-name{
     font-size:30px;
     font-weight:700;
-    margin-bottom:8px
+    margin-bottom:8px;
 }
 
+
+/* =========================================================
+   GAMES
+   ========================================================= */
+
+.games-title{
+    margin-bottom:25px;
+}
+
+.game-card{
+    max-width:650px;
+    background:#0f172a;
+    border:1px solid #1e293b;
+    border-radius:20px;
+    padding:25px;
+}
+
+.game-card h2{
+    margin-top:0;
+}
+
+.snake-wrapper{
+    display:flex;
+    justify-content:center;
+    margin-top:20px;
+}
+
+#snake{
+    width:100%;
+    max-width:500px;
+    aspect-ratio:1/1;
+    background:#020617;
+    border:2px solid #334155;
+    border-radius:12px;
+    display:block;
+}
+
+.game-info{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-top:15px;
+    gap:15px;
+}
+
+.score{
+    font-size:20px;
+    font-weight:bold;
+}
+
+.start-btn{
+    width:auto;
+    padding:12px 20px;
+}
+
+.controls{
+    display:grid;
+    grid-template-columns:repeat(3,60px);
+    justify-content:center;
+    gap:8px;
+    margin-top:20px;
+}
+
+.controls button{
+    width:60px;
+    height:50px;
+    padding:0;
+    font-size:20px;
+}
+
+.controls .empty{
+    visibility:hidden;
+}
+
+
+/* MOBILE */
+
 @media(max-width:850px){
+
     .sidebar{
         position:relative;
         width:100%;
         height:auto;
         border-right:0;
-        border-bottom:1px solid #1e293b
+        border-bottom:1px solid #1e293b;
     }
 
     .logout{
@@ -296,89 +484,171 @@ button{
         left:auto;
         right:auto;
         bottom:auto;
-        margin-top:20px
+        margin-top:20px;
     }
 
     .main{
         margin-left:0;
-        padding:20px
+        padding:20px;
     }
 
     .grid{
-        grid-template-columns:1fr
+        grid-template-columns:1fr;
     }
 
     .topbar{
-        display:block
+        display:block;
     }
 
     .user{
         display:inline-flex;
-        margin-top:15px
+        margin-top:15px;
     }
+
+    .game-card{
+        padding:15px;
+    }
+
 }
+
 </style>
 """
 
 
+# =========================================================
+# SIDEBAR
+# =========================================================
+
 def sidebar():
+
     return """
     <aside class="sidebar">
-        <div class="logo">🔥 FilipHub</div>
 
-        <div class="menu-title">Menu</div>
+        <div class="logo">
+            🔥 FilipHub
+        </div>
+
+        <div class="menu-title">
+            Menu
+        </div>
 
         <div class="menu">
-            <a href="/panel">🏠 Dashboard</a>
-            <a href="/profile">👤 Profil</a>
-            <a href="/edit-profile">✏️ Edytuj profil</a>
-            <a href="/change-password">🔐 Zmień hasło</a>
+
+            <a href="/panel">
+                🏠 Dashboard
+            </a>
+
+            <a href="/games">
+                🎮 Gry
+            </a>
+
+            <a href="/profile">
+                👤 Profil
+            </a>
+
+            <a href="/edit-profile">
+                ✏️ Edytuj profil
+            </a>
+
+            <a href="/change-password">
+                🔐 Zmień hasło
+            </a>
+
         </div>
 
         <div class="logout">
-            <a href="/logout">🚪 Wyloguj się</a>
+
+            <a href="/logout">
+                🚪 Wyloguj się
+            </a>
+
         </div>
+
     </aside>
     """
 
 
+# =========================================================
+# USER DATA
+# =========================================================
+
 def user_data(username):
+
     conn = get_db()
+
     c = conn.cursor()
 
     c.execute(
-        "SELECT username, avatar FROM users WHERE username = ?",
+        """
+        SELECT username, avatar
+        FROM users
+        WHERE username = ?
+        """,
         (username,)
     )
 
     row = c.fetchone()
+
     conn.close()
 
     return row
 
 
+# =========================================================
+# LOGIN
+# =========================================================
+
 LOGIN_HTML = """
 <!doctype html>
+
 <html lang="pl">
+
 <head>
+
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<meta
+name="viewport"
+content="width=device-width,initial-scale=1"
+>
+
 <title>FilipHub</title>
+
 {{ css|safe }}
+
 </head>
 
-<body style="min-height:100vh;display:flex;align-items:center;justify-content:center">
+<body
+style="
+min-height:100vh;
+display:flex;
+align-items:center;
+justify-content:center
+"
+>
 
-<div class="form-box" style="width:400px;max-width:92%">
+<div
+class="form-box"
+style="width:400px;max-width:92%"
+>
 
-<h1 style="text-align:center">🔥 FilipHub</h1>
+<h1 style="text-align:center">
+🔥 FilipHub
+</h1>
 
-<p class="muted" style="text-align:center">
+<p
+class="muted"
+style="text-align:center"
+>
 Witaj ponownie
 </p>
 
 {% if message %}
-<div class="message">{{ message }}</div>
+
+<div class="message">
+{{ message }}
+</div>
+
 {% endif %}
 
 <form method="post">
@@ -403,43 +673,88 @@ Zaloguj się
 
 </form>
 
-<p class="muted" style="text-align:center;margin-top:20px">
+<p
+class="muted"
+style="
+text-align:center;
+margin-top:20px
+"
+>
+
 Nie masz konta?
 
-<a href="/register" style="color:#818cf8">
+<a
+href="/register"
+style="color:#818cf8"
+>
 Utwórz konto
 </a>
+
 </p>
 
 </div>
 
 </body>
+
 </html>
 """
 
 
+# =========================================================
+# REGISTER
+# =========================================================
+
 REGISTER_HTML = """
 <!doctype html>
+
 <html lang="pl">
+
 <head>
+
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<meta
+name="viewport"
+content="width=device-width,initial-scale=1"
+>
+
 <title>FilipHub</title>
+
 {{ css|safe }}
+
 </head>
 
-<body style="min-height:100vh;display:flex;align-items:center;justify-content:center">
+<body
+style="
+min-height:100vh;
+display:flex;
+align-items:center;
+justify-content:center
+"
+>
 
-<div class="form-box" style="width:400px;max-width:92%">
+<div
+class="form-box"
+style="width:400px;max-width:92%"
+>
 
-<h1 style="text-align:center">🔥 FilipHub</h1>
+<h1 style="text-align:center">
+🔥 FilipHub
+</h1>
 
-<p class="muted" style="text-align:center">
+<p
+class="muted"
+style="text-align:center"
+>
 Utwórz konto
 </p>
 
 {% if message %}
-<div class="message">{{ message }}</div>
+
+<div class="message">
+{{ message }}
+</div>
+
 {% endif %}
 
 <form method="post">
@@ -464,17 +779,29 @@ Utwórz konto
 
 </form>
 
-<p class="muted" style="text-align:center;margin-top:20px">
+<p
+class="muted"
+style="
+text-align:center;
+margin-top:20px
+"
+>
+
 Masz już konto?
 
-<a href="/" style="color:#818cf8">
+<a
+href="/"
+style="color:#818cf8"
+>
 Zaloguj się
 </a>
+
 </p>
 
 </div>
 
 </body>
+
 </html>
 """
 
@@ -487,26 +814,40 @@ def login():
     if request.method == "POST":
 
         username = request.form["username"].strip()
+
         password = request.form["password"]
 
+
         conn = get_db()
+
         c = conn.cursor()
 
         c.execute(
-            "SELECT id, username, password FROM users WHERE username = ?",
+            """
+            SELECT id, username, password
+            FROM users
+            WHERE username = ?
+            """,
             (username,)
         )
 
         user = c.fetchone()
+
         conn.close()
 
-        if user and check_password_hash(user[2], password):
+
+        if user and check_password_hash(
+            user[2],
+            password
+        ):
 
             session["username"] = username
 
             return redirect("/panel")
 
+
         message = "Nieprawidłowy login lub hasło."
+
 
     return render_template_string(
         LOGIN_HTML,
@@ -514,6 +855,10 @@ def login():
         message=message
     )
 
+
+# =========================================================
+# REGISTER
+# =========================================================
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
@@ -523,19 +868,26 @@ def register():
     if request.method == "POST":
 
         username = request.form["username"].strip()
+
         password = request.form["password"]
+
 
         if len(username) < 3:
 
-            message = "Nazwa użytkownika musi mieć minimum 3 znaki."
+            message = (
+                "Nazwa użytkownika musi mieć minimum 3 znaki."
+            )
 
         elif len(password) < 6:
 
-            message = "Hasło musi mieć minimum 6 znaków."
+            message = (
+                "Hasło musi mieć minimum 6 znaków."
+            )
 
         else:
 
             conn = get_db()
+
             c = conn.cursor()
 
             try:
@@ -543,7 +895,11 @@ def register():
                 c.execute(
                     """
                     INSERT INTO users
-                    (username, password, avatar)
+                    (
+                        username,
+                        password,
+                        avatar
+                    )
                     VALUES (?, ?, ?)
                     """,
                     (
@@ -554,15 +910,20 @@ def register():
                 )
 
                 conn.commit()
+
                 conn.close()
 
                 return redirect("/")
+
 
             except sqlite3.IntegrityError:
 
                 conn.close()
 
-                message = "Taki użytkownik już istnieje."
+                message = (
+                    "Taki użytkownik już istnieje."
+                )
+
 
     return render_template_string(
         REGISTER_HTML,
@@ -571,21 +932,33 @@ def register():
     )
 
 
+# =========================================================
+# DASHBOARD
+# =========================================================
+
 @app.route("/panel")
 def panel():
 
     if "username" not in session:
+
         return redirect("/")
+
 
     username = session["username"]
 
     row = user_data(username)
 
-    avatar = row[1] if row and row[1] else ""
+    avatar = (
+        row[1]
+        if row and row[1]
+        else ""
+    )
+
 
     return render_template_string(
         """
 <!doctype html>
+
 <html lang="pl">
 
 <head>
@@ -609,11 +982,14 @@ content="width=device-width,initial-scale=1"
 
 <main class="main">
 
+
 <div class="topbar">
 
 <div>
 
-<h1>Dashboard</h1>
+<h1>
+Dashboard
+</h1>
 
 <p class="muted">
 Centrum Twojego konta
@@ -621,20 +997,29 @@ Centrum Twojego konta
 
 </div>
 
+
 <div class="user">
 
 {% if avatar %}
 
 <img
 class="avatar-small"
-src="{{ url_for('static', filename='uploads/' + avatar) }}"
+src="{{ url_for(
+    'static',
+    filename='uploads/' + avatar
+) }}"
 >
 
 {% else %}
 
 <div
 class="avatar-small"
-style="display:flex;align-items:center;justify-content:center;font-size:22px"
+style="
+display:flex;
+align-items:center;
+justify-content:center;
+font-size:22px
+"
 >
 👤
 </div>
@@ -663,6 +1048,7 @@ To jest Twoje centrum użytkownika.
 
 
 <div class="grid">
+
 
 <div class="card">
 
@@ -703,19 +1089,26 @@ i zmieniaj dane konta.
 <div class="card">
 
 <div class="card-icon">
-🔐
+🎮
 </div>
 
 <h3>
-Bezpieczeństwo
+Gry
 </h3>
 
 <p>
-Możesz w każdej chwili zmienić
-swoje hasło.
+Zagraj w minigry i pobij swój rekord.
 </p>
 
+<a
+class="btn"
+href="/games"
+>
+Zagraj
+</a>
+
 </div>
+
 
 </div>
 
@@ -730,6 +1123,10 @@ Szybkie akcje
 👤 Profil
 </a>
 
+<a href="/games">
+🎮 Gry
+</a>
+
 <a href="/edit-profile">
 ✏️ Edytuj profil
 </a>
@@ -740,9 +1137,11 @@ Szybkie akcje
 
 </section>
 
+
 </main>
 
 </body>
+
 </html>
         """,
         css=CSS,
@@ -752,21 +1151,33 @@ Szybkie akcje
     )
 
 
+# =========================================================
+# PROFILE
+# =========================================================
+
 @app.route("/profile")
 def profile():
 
     if "username" not in session:
+
         return redirect("/")
+
 
     username = session["username"]
 
     row = user_data(username)
 
-    avatar = row[1] if row and row[1] else ""
+    avatar = (
+        row[1]
+        if row and row[1]
+        else ""
+    )
+
 
     return render_template_string(
         """
 <!doctype html>
+
 <html lang="pl">
 
 <head>
@@ -801,11 +1212,15 @@ Twój profil
 
 <div class="profile-card">
 
+
 {% if avatar %}
 
 <img
 class="avatar-big"
-src="{{ url_for('static', filename='uploads/' + avatar) }}"
+src="{{ url_for(
+    'static',
+    filename='uploads/' + avatar
+) }}"
 >
 
 {% else %}
@@ -828,12 +1243,18 @@ Użytkownik FilipHub
 
 <div style="margin-top:25px">
 
-<a class="btn" href="/edit-profile">
+<a
+class="btn"
+href="/edit-profile"
+>
 ✏️ Edytuj profil
 </a>
 
-<a class="btn" href="/panel">
-🏠 Dashboard
+<a
+class="btn"
+href="/games"
+>
+🎮 Gry
 </a>
 
 </div>
@@ -843,6 +1264,7 @@ Użytkownik FilipHub
 </main>
 
 </body>
+
 </html>
         """,
         css=CSS,
@@ -852,19 +1274,30 @@ Użytkownik FilipHub
     )
 
 
+# =========================================================
+# EDIT PROFILE
+# =========================================================
+
 @app.route("/edit-profile", methods=["GET", "POST"])
 def edit_profile():
 
     if "username" not in session:
+
         return redirect("/")
+
 
     old_username = session["username"]
 
     row = user_data(old_username)
 
-    current_avatar = row[1] if row and row[1] else ""
+    current_avatar = (
+        row[1]
+        if row and row[1]
+        else ""
+    )
 
     message = ""
+
 
     if request.method == "POST":
 
@@ -874,13 +1307,22 @@ def edit_profile():
 
         new_avatar = current_avatar
 
+
         if len(new_username) < 3:
 
-            message = "Nazwa użytkownika musi mieć minimum 3 znaki."
+            message = (
+                "Nazwa użytkownika musi mieć minimum 3 znaki."
+            )
 
-        elif file and file.filename and not allowed_file(file.filename):
+        elif (
+            file
+            and file.filename
+            and not allowed_file(file.filename)
+        ):
 
-            message = "Dozwolone formaty: JPG, JPEG, PNG, WEBP."
+            message = (
+                "Dozwolone formaty: JPG, JPEG, PNG, WEBP."
+            )
 
         else:
 
@@ -888,14 +1330,24 @@ def edit_profile():
 
                 extension = secure_filename(
                     file.filename
-                ).rsplit(".", 1)[1].lower()
+                ).rsplit(
+                    ".",
+                    1
+                )[1].lower()
 
-                filename = uuid.uuid4().hex + "." + extension
+
+                filename = (
+                    uuid.uuid4().hex
+                    + "."
+                    + extension
+                )
+
 
                 filepath = os.path.join(
                     app.config["UPLOAD_FOLDER"],
                     filename
                 )
+
 
                 file.save(filepath)
 
@@ -903,7 +1355,9 @@ def edit_profile():
 
 
             conn = get_db()
+
             c = conn.cursor()
+
 
             try:
 
@@ -924,21 +1378,30 @@ def edit_profile():
                 )
 
                 conn.commit()
+
                 conn.close()
 
 
-                if current_avatar and new_avatar != current_avatar:
+                if (
+                    current_avatar
+                    and
+                    new_avatar != current_avatar
+                ):
 
                     old_file = os.path.join(
                         app.config["UPLOAD_FOLDER"],
                         current_avatar
                     )
 
+
                     if os.path.exists(old_file):
 
                         try:
+
                             os.remove(old_file)
+
                         except OSError:
+
                             pass
 
 
@@ -951,6 +1414,7 @@ def edit_profile():
 
                 conn.close()
 
+
                 if new_avatar != current_avatar:
 
                     new_file = os.path.join(
@@ -958,16 +1422,21 @@ def edit_profile():
                         new_avatar
                     )
 
+
                     if os.path.exists(new_file):
 
                         os.remove(new_file)
 
-                message = "Taka nazwa użytkownika już istnieje."
+
+                message = (
+                    "Taka nazwa użytkownika już istnieje."
+                )
 
 
     return render_template_string(
         """
 <!doctype html>
+
 <html lang="pl">
 
 <head>
@@ -989,284 +1458,4 @@ content="width=device-width,initial-scale=1"
 
 {{ sidebar|safe }}
 
-<main class="main">
-
-<div class="topbar">
-
-<h1>
-Edytuj profil
-</h1>
-
-</div>
-
-
-<div class="form-box">
-
-{% if message %}
-
-<div class="message">
-{{ message }}
-</div>
-
-{% endif %}
-
-
-<div style="text-align:center">
-
-{% if current_avatar %}
-
-<img
-class="avatar-big"
-src="{{ url_for('static', filename='uploads/' + current_avatar) }}"
->
-
-{% else %}
-
-<div class="placeholder">
-👤
-</div>
-
-{% endif %}
-
-</div>
-
-
-<form
-method="post"
-enctype="multipart/form-data"
->
-
-<label>
-Nazwa użytkownika
-</label>
-
-<input
-type="text"
-name="username"
-value="{{ old_username }}"
-minlength="3"
-required
->
-
-
-<label>
-Zdjęcie profilowe
-</label>
-
-<input
-type="file"
-name="avatar"
-accept=".jpg,.jpeg,.png,.webp"
->
-
-<p class="muted">
-JPG, JPEG, PNG lub WEBP.
-Maksymalnie 5 MB.
-</p>
-
-
-<button type="submit">
-💾 Zapisz zmiany
-</button>
-
-</form>
-
-</div>
-
-</main>
-
-</body>
-
-</html>
-        """,
-        css=CSS,
-        sidebar=sidebar(),
-        old_username=old_username,
-        current_avatar=current_avatar,
-        message=message
-    )
-
-
-@app.route("/change-password", methods=["GET", "POST"])
-def change_password():
-
-    if "username" not in session:
-        return redirect("/")
-
-    username = session["username"]
-
-    message = ""
-
-    if request.method == "POST":
-
-        current = request.form["current_password"]
-
-        new = request.form["new_password"]
-
-        confirm = request.form["confirm_password"]
-
-
-        conn = get_db()
-
-        c = conn.cursor()
-
-        c.execute(
-            "SELECT password FROM users WHERE username = ?",
-            (username,)
-        )
-
-        row = c.fetchone()
-
-
-        if not row:
-
-            conn.close()
-
-            return redirect("/")
-
-
-        if not check_password_hash(row[0], current):
-
-            message = "Obecne hasło jest nieprawidłowe."
-
-        elif len(new) < 6:
-
-            message = "Nowe hasło musi mieć minimum 6 znaków."
-
-        elif new != confirm:
-
-            message = "Hasła nie są takie same."
-
-        elif check_password_hash(row[0], new):
-
-            message = "Nowe hasło musi być inne."
-
-        else:
-
-            c.execute(
-                """
-                UPDATE users
-
-                SET password = ?
-
-                WHERE username = ?
-                """,
-                (
-                    generate_password_hash(new),
-                    username
-                )
-            )
-
-            conn.commit()
-
-            conn.close()
-
-            return redirect("/panel")
-
-
-        conn.close()
-
-
-    return render_template_string(
-        """
-<!doctype html>
-<html lang="pl">
-
-<head>
-
-<meta charset="UTF-8">
-
-<meta
-name="viewport"
-content="width=device-width,initial-scale=1"
->
-
-<title>FilipHub - Zmień hasło</title>
-
-{{ css|safe }}
-
-</head>
-
-<body>
-
-{{ sidebar|safe }}
-
-<main class="main">
-
-<div class="topbar">
-
-<h1>
-Zmień hasło
-</h1>
-
-</div>
-
-
-<div class="form-box">
-
-{% if message %}
-
-<div class="message">
-{{ message }}
-</div>
-
-{% endif %}
-
-
-<form method="post">
-
-<input
-type="password"
-name="current_password"
-placeholder="Obecne hasło"
-required
->
-
-<input
-type="password"
-name="new_password"
-placeholder="Nowe hasło"
-required
->
-
-<input
-type="password"
-name="confirm_password"
-placeholder="Powtórz nowe hasło"
-required
->
-
-<button type="submit">
-🔐 Zmień hasło
-</button>
-
-</form>
-
-</div>
-
-</main>
-
-</body>
-
-</html>
-        """,
-        css=CSS,
-        sidebar=sidebar(),
-        message=message
-    )
-
-
-@app.route("/logout")
-def logout():
-
-    session.clear()
-
-    return redirect("/")
-
-
-if __name__ == "__main__":
-
-    app.run(
-        host="0.0.0.0",
-        port=8080
-    )
+<m
